@@ -60,7 +60,7 @@ model Categorie {
 // Frigo, congélateur, placard, cave...
 model Emplacement {
   id   String           @id @default(uuid())
-  nom  String
+  nom  String           @unique
   type TypeEmplacement
 
   articlesStock ArticleStock[]
