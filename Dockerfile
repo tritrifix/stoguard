@@ -38,6 +38,9 @@ COPY --from=builder --chown=node:node /app/package.json ./package.json
 # Nécessaires à "prisma migrate deploy" au démarrage du conteneur.
 COPY --from=builder --chown=node:node /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=node:node /app/prisma ./prisma
+# L'application n'en a pas besoin (Vite inline le client généré dans build/),
+# mais prisma/seed.ts est exécuté directement par node et l'importe.
+COPY --from=builder --chown=node:node /app/generated ./generated
 COPY --chown=node:node docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 

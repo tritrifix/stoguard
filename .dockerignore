@@ -2,6 +2,11 @@ node_modules
 .svelte-kit
 build
 
+# Régénéré dans l'image par le postinstall : sans cette ligne, le "COPY . ."
+# écraserait le client fraîchement généré par la copie (potentiellement
+# obsolète) de la machine de build.
+generated
+
 .git
 .idea
 .vscode

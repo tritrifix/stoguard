@@ -7,6 +7,14 @@ services:
     environment:
       PORT: 3000
       HOST: 0.0.0.0
+      # Détermine le "aujourd'hui" utilisé pour calculer les jours restants.
+      # Sans ça le conteneur est en UTC et bascule de jour à 2 h du matin.
+      TZ: ${TZ:-Europe/Paris}
+      # L'app est derrière Caddy : sans ces deux en-têtes, adapter-node ne
+      # connaît pas son origine publique et rejette tous les POST de
+      # formulaire en 403 (protection CSRF). Caddy les envoie par défaut.
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}

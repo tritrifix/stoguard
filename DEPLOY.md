@@ -44,6 +44,7 @@ Puis éditer `.env` et renseigner chaque variable :
 | `DATABASE_URL`        | URL de connexion utilisée par l'application et par Prisma.                                    | À reconstruire à la main à partir des trois valeurs ci-dessus (voir plus bas).          |
 | `SESSION_SECRET`      | Clé utilisée pour signer les cookies de session.                                              | À générer aléatoirement, voir commande ci-dessous.                                      |
 | `AUTH_PASSWORD_HASH`  | Hash Argon2 du mot de passe de connexion à l'application.                                     | **Laisser vide pour l'instant** — l'authentification n'est pas encore branchée (étape à venir). |
+| `TZ`                  | Fuseau horaire du conteneur. Il détermine à quel moment on change de jour, donc le calcul des « jours restants » avant péremption. | Facultatif : `Europe/Paris` par défaut. Ne changer que si vous n'êtes pas en France métropolitaine. |
 
 Générer un secret aléatoire (utilisable pour `POSTGRES_PASSWORD` comme pour
 `SESSION_SECRET`) :
@@ -82,7 +83,21 @@ Cette commande construit l'image de l'app à partir du `Dockerfile`, démarre
 Postgres, applique automatiquement les migrations Prisma (voir section
 « Mise à jour » ci-dessous) puis démarre l'app et Caddy.
 
-## 4. Vérifier que ça tourne
+## 4. Charger les données de référence (première installation uniquement)
+
+L'application a besoin de sa liste d'emplacements (Réfrigérateur, Congélateur,
+Placard, Cave) et de catégories (avec leur délai de consommation après
+ouverture). Sans elles, le formulaire d'ajout n'a aucun emplacement à proposer.
+
+```sh
+docker compose exec app node_modules/.bin/prisma db seed
+```
+
+Cette commande est **idempotente** : la relancer ne crée pas de doublons. Elle
+réaligne en revanche les délais des catégories sur les valeurs par défaut, donc
+ne la relancez pas si vous avez personnalisé ces délais.
+
+## 5. Vérifier que ça tourne
 
 État des services :
 
@@ -102,7 +117,7 @@ curl -i http://localhost/health
 Une réponse `HTTP/1.1 200 OK` avec le corps `OK` confirme que l'app répond et
 que Caddy relaie correctement vers elle.
 
-## 5. Mettre à jour une instance existante
+## 6. Mettre à jour une instance existante
 
 ```sh
 git pull
@@ -116,7 +131,7 @@ redémarrage du conteneur. Si une migration échoue, le conteneur s'arrête en
 erreur au lieu de démarrer l'app sur une base au mauvais schéma — dans ce cas,
 regarder les logs (`docker compose logs app`) avant de réessayer.
 
-## 6. Logs et redémarrage
+## 7. Logs et redémarrage
 
 Suivre les logs d'un service en continu :
 
@@ -132,7 +147,7 @@ Redémarrer un seul service (sans reconstruire l'image) :
 docker compose restart app
 ```
 
-## 7. Sauvegarde de la base de données
+## 8. Sauvegarde de la base de données
 
 Le volume Docker `db_data` (données Postgres) est **la seule chose du projet
 qui n'est pas reconstructible** : le code est dans git, l'image se
@@ -155,7 +170,7 @@ Restauration à partir d'un dump :
 cat backup_20260101_120000.sql | docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 ```
 
-## 8. À propos de Caddy et du HTTPS
+## 9. À propos de Caddy et du HTTPS
 
 Le `Caddyfile` fourni écoute en clair sur le port `:80`, sans TLS :
 
