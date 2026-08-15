@@ -11,6 +11,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"start": "node build/index.js",
+		"postinstall": "prisma generate",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
@@ -23,5 +24,10 @@
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",
 		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"@prisma/adapter-pg": "^7.9.1",
+		"@prisma/client": "^7.9.1",
+		"prisma": "^7.9.1"
 	}
 }

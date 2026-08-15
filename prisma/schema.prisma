@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TypeEmplacement {
+  FRIGO
+  CONGELATEUR
+  PLACARD
+  AUTRE
+}
+
+enum TypeDate {
+  DLC // à consommer jusqu'au — risque sanitaire, périmé = jeté
+  DDM // à consommer de préférence avant — perte de qualité, reste consommable
+}
+
+enum MotifConsommation {
+  CONSOMME
+  JETE_PERIME
+  JETE_AUTRE
+}
+
+// Référentiel produit, indexé par code-barre. Un seul enregistrement même si
+// dix exemplaires identiques sont en stock (voir ArticleStock). Sert de cache
+// local des données Open Food Facts.
+model Produit {
+  id            String    @id @default(uuid())
+  ean           String?   @unique
+  nom           String
+  marque        String?
+  contenance    String?
+  imageUrl      String?
+  dateMajCache  DateTime?
+  saisiManuelle Boolean   @default(false)
+
+  categorieId String?
+  categorie   Categorie? @relation(fields: [categorieId], references: [id], onDelete: SetNull)
+
+  articlesStock ArticleStock[]
+}
+
+// Porte le délai de consommation après ouverture par défaut pour les produits
+// de cette catégorie (ex : produits laitiers -> 3 jours).
+model Categorie {
+  id                  String @id @default(uuid())
+  nom                 String @unique
+  delaiApresOuverture Int? // jours
+
+  produits Produit[]
+}
+
+// Frigo, congélateur, placard, cave...
+model Emplacement {
+  id   String           @id @default(uuid())
+  nom  String
+  type TypeEmplacement
+
+  articlesStock ArticleStock[]
+}
+
+// Modèle central : un exemplaire physique en stock.
+model ArticleStock {
+  id String @id @default(uuid())
+
+  produitId String
+  produit   Produit @relation(fields: [produitId], references: [id], onDelete: Restrict)
+
+  emplacementId String
+  emplacement   Emplacement @relation(fields: [emplacementId], references: [id], onDelete: Restrict)
+
+  quantite Decimal @default(1) @db.Decimal(10, 3)
+
+  dateImprimee DateTime
+  typeDate     TypeDate
+
+  estOuvert      Boolean   @default(false)
+  dateOuverture  DateTime?
+  // Surcharge optionnelle, pour cet article précis, du délai après ouverture
+  // par défaut de la catégorie. La date effective se calcule en applicatif
+  // (pas ici) comme : min(dateImprimee, dateOuverture + delai), où delai =
+  // delaiOuverture s'il est renseigné, sinon Produit.categorie.delaiApresOuverture.
+  delaiOuverture Int?
+
+  dateAjout DateTime @default(now())
+  notes     String?
+
+  consommations Consommation[]
+
+  @@index([dateImprimee])
+  @@index([estOuvert])
+}
+
+// Historique : chaque sortie de stock (consommé ou jeté).
+model Consommation {
+  id String @id @default(uuid())
+
+  articleStockId String
+  articleStock   ArticleStock @relation(fields: [articleStockId], references: [id], onDelete: Restrict)
+
+  date     DateTime          @default(now())
+  motif    MotifConsommation
+  quantite Decimal           @db.Decimal(10, 3)
+}

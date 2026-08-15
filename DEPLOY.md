@@ -1,0 +1,177 @@
+# Déploiement de Stoguard
+
+Procédure de déploiement manuel, sans CI/CD : l'image est construite
+directement sur la machine cible à partir du code source (`build: .` dans
+`docker-compose.yml`), pas récupérée depuis un registre.
+
+## Prérequis
+
+Sur la machine cible (n'importe quel Linux/macOS avec accès réseau) :
+
+- **Docker** (moteur) — [instructions d'installation](https://docs.docker.com/engine/install/)
+- **Docker Compose** (plugin `docker compose`, inclus avec Docker Desktop et
+  les paquets Docker récents sur Linux)
+- **git**
+
+Vérifier que tout est en place :
+
+```sh
+docker --version
+docker compose version
+git --version
+```
+
+## 1. Cloner le dépôt
+
+```sh
+git clone <url-du-dépôt> stoguard
+cd stoguard
+```
+
+## 2. Créer le fichier `.env`
+
+```sh
+cp .env.example .env
+```
+
+Puis éditer `.env` et renseigner chaque variable :
+
+| Variable             | Rôle                                                                                          | Comment obtenir la valeur                                                              |
+|-----------------------|-----------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| `POSTGRES_USER`       | Nom d'utilisateur créé dans le conteneur Postgres au premier démarrage.                       | Pas un secret : garder `stoguard` ou choisir un autre nom.                              |
+| `POSTGRES_PASSWORD`   | Mot de passe de cet utilisateur Postgres.                                                     | À générer aléatoirement, voir commande ci-dessous. Ne jamais garder `changeme`.         |
+| `POSTGRES_DB`         | Nom de la base créée au premier démarrage.                                                    | Pas un secret : garder `stoguard` ou choisir un autre nom.                              |
+| `DATABASE_URL`        | URL de connexion utilisée par l'application et par Prisma.                                    | À reconstruire à la main à partir des trois valeurs ci-dessus (voir plus bas).          |
+| `SESSION_SECRET`      | Clé utilisée pour signer les cookies de session.                                              | À générer aléatoirement, voir commande ci-dessous.                                      |
+| `AUTH_PASSWORD_HASH`  | Hash Argon2 du mot de passe de connexion à l'application.                                     | **Laisser vide pour l'instant** — l'authentification n'est pas encore branchée (étape à venir). |
+
+Générer un secret aléatoire (utilisable pour `POSTGRES_PASSWORD` comme pour
+`SESSION_SECRET`) :
+
+```sh
+openssl rand -hex 32
+```
+
+Exemple de `.env` complet une fois rempli (remplacer les valeurs générées) :
+
+```env
+POSTGRES_USER=stoguard
+POSTGRES_PASSWORD=<valeur générée avec openssl rand -hex 32>
+POSTGRES_DB=stoguard
+
+# "db" est le nom du service Postgres sur le réseau Docker interne, pas
+# "localhost" — ne pas changer ce host même si Postgres tourne sur la même
+# machine que l'app.
+DATABASE_URL=postgresql://stoguard:<même mot de passe que POSTGRES_PASSWORD>@db:5432/stoguard
+
+SESSION_SECRET=<autre valeur générée avec openssl rand -hex 32>
+
+AUTH_PASSWORD_HASH=
+```
+
+`.env` n'est jamais commité (il est dans `.gitignore`) : chaque machine de
+déploiement a le sien.
+
+## 3. Lancer l'application
+
+```sh
+docker compose up -d --build
+```
+
+Cette commande construit l'image de l'app à partir du `Dockerfile`, démarre
+Postgres, applique automatiquement les migrations Prisma (voir section
+« Mise à jour » ci-dessous) puis démarre l'app et Caddy.
+
+## 4. Vérifier que ça tourne
+
+État des services :
+
+```sh
+docker compose ps
+```
+
+Les trois services (`app`, `db`, `caddy`) doivent afficher `Up` (et `healthy`
+pour `db`).
+
+Contrôle applicatif via le endpoint de santé, à travers Caddy :
+
+```sh
+curl -i http://localhost/health
+```
+
+Une réponse `HTTP/1.1 200 OK` avec le corps `OK` confirme que l'app répond et
+que Caddy relaie correctement vers elle.
+
+## 5. Mettre à jour une instance existante
+
+```sh
+git pull
+docker compose up -d --build
+```
+
+Cette seule commande suffit : l'image est reconstruite avec le nouveau code,
+et l'entrypoint du conteneur `app` exécute automatiquement
+`prisma migrate deploy` **avant** de démarrer l'application, à chaque
+redémarrage du conteneur. Si une migration échoue, le conteneur s'arrête en
+erreur au lieu de démarrer l'app sur une base au mauvais schéma — dans ce cas,
+regarder les logs (`docker compose logs app`) avant de réessayer.
+
+## 6. Logs et redémarrage
+
+Suivre les logs d'un service en continu :
+
+```sh
+docker compose logs -f app
+docker compose logs -f db
+docker compose logs -f caddy
+```
+
+Redémarrer un seul service (sans reconstruire l'image) :
+
+```sh
+docker compose restart app
+```
+
+## 7. Sauvegarde de la base de données
+
+Le volume Docker `db_data` (données Postgres) est **la seule chose du projet
+qui n'est pas reconstructible** : le code est dans git, l'image se
+reconstruit à partir du code, mais les données doivent être sauvegardées
+explicitement.
+
+Dump complet de la base, à lancer régulièrement (ou avant toute opération
+risquée) :
+
+```sh
+docker compose exec db pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+(`$POSTGRES_USER` et `$POSTGRES_DB` doivent être exportés dans le shell, ou
+remplacés directement par les valeurs présentes dans `.env`.)
+
+Restauration à partir d'un dump :
+
+```sh
+cat backup_20260101_120000.sql | docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+```
+
+## 8. À propos de Caddy et du HTTPS
+
+Le `Caddyfile` fourni écoute en clair sur le port `:80`, sans TLS :
+
+```
+:80 {
+	reverse_proxy app:3000
+}
+```
+
+C'est volontaire : ce déploiement suppose qu'un reverse proxy externe (autre
+machine, load balancer, etc.) gère déjà le HTTPS et transmet le trafic en
+HTTP vers cette machine.
+
+**Ne pas remplacer `:80` par un nom de domaine dans le `Caddyfile`** tant que
+ce n'est pas réellement le cas : si un nom de domaine y est renseigné, Caddy
+tente automatiquement d'obtenir un certificat Let's Encrypt pour ce domaine
+au démarrage, et échoue (DNS non pointé, port 443 non joignable depuis
+l'extérieur, etc.), ce qui empêche le service `caddy` de démarrer
+correctement.

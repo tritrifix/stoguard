@@ -20,10 +20,13 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      # Internal-only credentials (no host port published below).
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Loopback uniquement : permet de lancer des commandes Prisma (migrate,
+      # studio...) depuis l'hôte sans exposer Postgres au reste du réseau.
+      - "127.0.0.1:5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
