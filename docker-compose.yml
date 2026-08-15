@@ -15,6 +15,11 @@ services:
       # formulaire en 403 (protection CSRF). Caddy les envoie par défaut.
       PROTOCOL_HEADER: x-forwarded-proto
       HOST_HEADER: x-forwarded-host
+      # Sans ça, getClientAddress() (utilisé par le limiteur anti-force-brute
+      # de /login) renvoie l'IP de Caddy pour toutes les requêtes, confondant
+      # tous les visiteurs dans un seul compteur. Caddy peuple X-Forwarded-For
+      # par défaut dans reverse_proxy.
+      ADDRESS_HEADER: x-forwarded-for
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}

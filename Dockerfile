@@ -41,6 +41,11 @@ COPY --from=builder --chown=node:node /app/prisma ./prisma
 # L'application n'en a pas besoin (Vite inline le client généré dans build/),
 # mais prisma/seed.ts est exécuté directement par node et l'importe.
 COPY --from=builder --chown=node:node /app/generated ./generated
+# scripts/hash-password.ts importe src/lib/server/auth.ts en relatif : copie
+# de src/ en entier (quelques dizaines de Ko) plutôt que ce seul fichier, pour
+# rester correct si auth.ts gagne un jour un import interne à src/.
+COPY --from=builder --chown=node:node /app/src ./src
+COPY --from=builder --chown=node:node /app/scripts ./scripts
 COPY --chown=node:node docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
