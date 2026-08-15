@@ -92,10 +92,17 @@ model ArticleStock {
   dateAjout DateTime @default(now())
   notes     String?
 
+  // Sortie de stock (consommé ou jeté). Null = encore en stock.
+  // On ne supprime jamais la ligne : Consommation.articleStockId est en
+  // onDelete: Restrict, et l'historique de consommation doit rester
+  // rattachable à l'article concerné.
+  dateSortie DateTime?
+
   consommations Consommation[]
 
   @@index([dateImprimee])
   @@index([estOuvert])
+  @@index([dateSortie])
 }
 
 // Historique : chaque sortie de stock (consommé ou jeté).
