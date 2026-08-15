@@ -43,7 +43,7 @@ Puis éditer `.env` et renseigner chaque variable :
 | `POSTGRES_DB`         | Nom de la base créée au premier démarrage.                                                    | Pas un secret : garder `stoguard` ou choisir un autre nom.                              |
 | `DATABASE_URL`        | URL de connexion utilisée par l'application et par Prisma.                                    | À reconstruire à la main à partir des trois valeurs ci-dessus (voir plus bas).          |
 | `SESSION_SECRET`      | Clé utilisée pour signer les cookies de session.                                              | À générer aléatoirement, voir commande ci-dessous.                                      |
-| `AUTH_PASSWORD_HASH`  | Hash Argon2 du mot de passe de connexion à l'application.                                     | **Laisser vide pour l'instant** — l'authentification n'est pas encore branchée (étape à venir). |
+| `AUTH_PASSWORD_HASH`  | Hash (scrypt) du mot de passe de connexion à l'application.                                   | **Laisser vide pour l'instant**, généré à l'étape suivante. L'application refuse de démarrer tant qu'il est vide. |
 | `TZ`                  | Fuseau horaire du conteneur. Il détermine à quel moment on change de jour, donc le calcul des « jours restants » avant péremption. | Facultatif : `Europe/Paris` par défaut. Ne changer que si vous n'êtes pas en France métropolitaine. |
 
 Générer un secret aléatoire (utilisable pour `POSTGRES_PASSWORD` comme pour
@@ -73,17 +73,42 @@ AUTH_PASSWORD_HASH=
 `.env` n'est jamais commité (il est dans `.gitignore`) : chaque machine de
 déploiement a le sien.
 
-## 3. Lancer l'application
+## 3. Générer le mot de passe de connexion
+
+L'application n'a pas de compte ni d'inscription : un seul mot de passe,
+partagé, protège tout le site. Sans `AUTH_PASSWORD_HASH` renseigné dans
+`.env`, elle refuse de démarrer plutôt que de tourner sans protection.
+
+Construisez d'abord l'image (elle contient le script de hachage) :
+
+```sh
+docker compose build app
+```
+
+Puis générez le hash, dans un conteneur jetable qui ne touche pas à la base
+de données (l'option `--entrypoint npm` court-circuite volontairement les
+migrations automatiques, inutiles ici) :
+
+```sh
+docker compose run --rm --entrypoint npm app run auth:hash
+```
+
+Le mot de passe est saisi en masqué, jamais affiché ni écrit sur disque.
+Collez la valeur affichée (`<sel>:<hash>`) dans `AUTH_PASSWORD_HASH=` de
+`.env`.
+
+## 4. Lancer l'application
 
 ```sh
 docker compose up -d --build
 ```
 
-Cette commande construit l'image de l'app à partir du `Dockerfile`, démarre
-Postgres, applique automatiquement les migrations Prisma (voir section
-« Mise à jour » ci-dessous) puis démarre l'app et Caddy.
+Cette commande construit l'image de l'app à partir du `Dockerfile` (déjà fait
+à l'étape précédente, donc rapide ici), démarre Postgres, applique
+automatiquement les migrations Prisma (voir section « Mise à jour »
+ci-dessous) puis démarre l'app et Caddy.
 
-## 4. Charger les données de référence (première installation uniquement)
+## 5. Charger les données de référence (première installation uniquement)
 
 L'application a besoin de sa liste d'emplacements (Réfrigérateur, Congélateur,
 Placard, Cave) et de catégories (avec leur délai de consommation après
@@ -97,7 +122,7 @@ Cette commande est **idempotente** : la relancer ne crée pas de doublons. Elle
 réaligne en revanche les délais des catégories sur les valeurs par défaut, donc
 ne la relancez pas si vous avez personnalisé ces délais.
 
-## 5. Vérifier que ça tourne
+## 6. Vérifier que ça tourne
 
 État des services :
 
@@ -117,7 +142,7 @@ curl -i http://localhost/health
 Une réponse `HTTP/1.1 200 OK` avec le corps `OK` confirme que l'app répond et
 que Caddy relaie correctement vers elle.
 
-## 6. Mettre à jour une instance existante
+## 7. Mettre à jour une instance existante
 
 ```sh
 git pull
@@ -131,7 +156,7 @@ redémarrage du conteneur. Si une migration échoue, le conteneur s'arrête en
 erreur au lieu de démarrer l'app sur une base au mauvais schéma — dans ce cas,
 regarder les logs (`docker compose logs app`) avant de réessayer.
 
-## 7. Logs et redémarrage
+## 8. Logs et redémarrage
 
 Suivre les logs d'un service en continu :
 
@@ -147,7 +172,7 @@ Redémarrer un seul service (sans reconstruire l'image) :
 docker compose restart app
 ```
 
-## 8. Sauvegarde de la base de données
+## 9. Sauvegarde de la base de données
 
 Le volume Docker `db_data` (données Postgres) est **la seule chose du projet
 qui n'est pas reconstructible** : le code est dans git, l'image se
@@ -170,7 +195,7 @@ Restauration à partir d'un dump :
 cat backup_20260101_120000.sql | docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 ```
 
-## 9. À propos de Caddy et du HTTPS
+## 10. À propos de Caddy et du HTTPS
 
 Le `Caddyfile` fourni écoute en clair sur le port `:80`, sans TLS :
 
