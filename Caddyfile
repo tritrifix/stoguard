@@ -1,0 +1,7 @@
+# Socle minimal : écoute en HTTP sur le port 80 et relaie vers le service "app".
+# Pour activer le HTTPS automatique (Let's Encrypt), remplace ":80" par ton
+# nom de domaine (ex. "stock.mondomaine.fr") une fois le DNS pointé sur la VM —
+# Caddy gérera alors la redirection HTTP -> HTTPS et le renouvellement du certificat tout seul.
+:80 {
+	reverse_proxy app:3000
+}
