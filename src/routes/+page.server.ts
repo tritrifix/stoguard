@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { aujourdhui, dateEffective, etatArticle, joursRestants, severite } from '$lib/dates';
 import type { Actions, PageServerLoad } from './$types';
@@ -118,5 +118,10 @@ export const actions: Actions = {
 		const motif = donnees.get('motif') === 'JETE_AUTRE' ? 'JETE_AUTRE' : 'JETE_PERIME';
 		const echec = await sortirDuStock(String(donnees.get('id') ?? ''), motif);
 		return echec ?? { succes: true };
+	},
+
+	deconnexion: async ({ cookies }) => {
+		cookies.delete('session', { path: '/' });
+		redirect(303, '/login');
 	}
 };

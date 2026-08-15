@@ -22,7 +22,12 @@
 
 <header>
 	<h1>Mon stock</h1>
-	<a class="ajouter" href="/ajouter">+ Ajouter</a>
+	<div class="actions-entete">
+		<a class="ajouter" href="/ajouter">+ Ajouter</a>
+		<form method="POST" action="?/deconnexion">
+			<button type="submit" class="deconnexion">Déconnexion</button>
+		</form>
+	</div>
 </header>
 
 <form method="GET" class="filtre">
@@ -108,6 +113,12 @@
 		margin: 0;
 	}
 
+	.actions-entete {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
 	.ajouter {
 		background: #1f6feb;
 		color: #fff;
@@ -115,6 +126,17 @@
 		padding: 0.6rem 0.9rem;
 		border-radius: 8px;
 		font-weight: 600;
+		white-space: nowrap;
+	}
+
+	.deconnexion {
+		background: none;
+		border: 1px solid #d0d7de;
+		color: #57606a;
+		padding: 0.6rem 0.75rem;
+		border-radius: 8px;
+		font-size: 0.85rem;
+		cursor: pointer;
 		white-space: nowrap;
 	}
 
