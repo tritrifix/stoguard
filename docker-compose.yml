@@ -20,6 +20,15 @@ services:
       # tous les visiteurs dans un seul compteur. Caddy peuple X-Forwarded-For
       # par défaut dans reverse_proxy.
       ADDRESS_HEADER: x-forwarded-for
+      # Chaîne à deux sauts : le reverse proxy externe (HAProxy) pose
+      # X-Forwarded-For avec l'IP du visiteur, puis Caddy — qui lui fait
+      # confiance (trusted_proxies dans le Caddyfile) — AJOUTE son propre
+      # saut au lieu de le remplacer. adapter-node lit
+      # addresses[length - XFF_DEPTH] : avec la valeur par défaut (1), on
+      # lirait le dernier maillon ajouté par Caddy, pas l'IP du visiteur.
+      # Vérifié avec un serveur d'écho : X-Forwarded-For reçu par l'app vaut
+      # "<ip_visiteur>, <ip_vue_par_caddy>", d'où profondeur 2.
+      XFF_DEPTH: 2
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}
