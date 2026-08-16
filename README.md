@@ -98,6 +98,12 @@ progressivement les tentatives successives, par IP, en mémoire. Limite connue
 et documentée dans le fichier : le compteur est perdu à chaque redémarrage du
 conteneur.
 
+**Derrière un reverse proxy externe** (HTTPS terminé en amont de Caddy), voir
+la section « À propos de Caddy et du HTTPS » dans
+[DEPLOY.md](DEPLOY.md) : sans les bons en-têtes `X-Forwarded-*`, le
+fail-closed CSRF et l'anti-force-brute cessent tous les deux de fonctionner
+correctement.
+
 ## Prérequis
 
 - **Node.js 24** (voir `.nvmrc` ; le projet refuse les autres versions

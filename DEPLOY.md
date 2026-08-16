@@ -215,3 +215,47 @@ tente automatiquement d'obtenir un certificat Let's Encrypt pour ce domaine
 au démarrage, et échoue (DNS non pointé, port 443 non joignable depuis
 l'extérieur, etc.), ce qui empêche le service `caddy` de démarrer
 correctement.
+
+### En-têtes attendus du reverse proxy externe
+
+Ce reverse proxy externe (celui qui termine le TLS, en amont de Caddy) doit
+transmettre trois en-têtes :
+
+- `X-Forwarded-Proto` — le schéma d'origine (`https`), pour que l'application
+  reconstruise correctement son URL publique.
+- `X-Forwarded-Host` — le nom d'hôte public.
+- `X-Forwarded-For` — l'adresse IP du visiteur.
+
+Exemple avec HAProxy :
+
+```
+acl https ssl_fc
+http-request set-header X-Forwarded-Proto https if https
+option forwardfor
+```
+
+Le `Caddyfile` fait confiance à ces en-têtes via `trusted_proxies static
+private_ranges` (bloc global en tête de fichier) — sans quoi Caddy les
+ignorerait et les remplacerait par ce qu'il observe lui-même, du HTTP en
+clair. **Sans cette configuration, deux choses cassent :**
+
+- **Tous les formulaires renvoient 403** (« Cross-site POST form submissions
+  are forbidden ») : l'application croit tourner en HTTP alors que le
+  navigateur envoie `Origin: https://...`, la protection CSRF d'adapter-node
+  rejette l'écart.
+- **Le limiteur anti-force-brute de `/login` devient inopérant** : tous les
+  visiteurs partagent la même IP observée (celle du reverse proxy), donc le
+  même compteur.
+
+Si le reverse proxy externe ajoute lui-même un ou plusieurs sauts avant
+Caddy (comme HAProxy), la variable `XFF_DEPTH` du service `app` (dans
+`docker-compose.yml`) doit refléter le nombre total de sauts dans la chaîne
+`X-Forwarded-For` telle que vue par l'application — Caddy ajoute son propre
+saut à la valeur reçue plutôt que de la remplacer.
+
+### Sonde de santé
+
+Le reverse proxy externe doit interroger **`/health`**, jamais `/` : depuis
+la mise en place de l'authentification, `/` renvoie une redirection 303 vers
+`/login` pour un visiteur non authentifié, ce qu'une sonde de santé
+interpréterait à tort comme un service en panne.
