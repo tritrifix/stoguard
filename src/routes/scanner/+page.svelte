@@ -3,10 +3,105 @@
 
 	type Etat = 'demarrage' | 'pret' | 'non-supporte' | 'refuse' | 'absente' | 'erreur';
 
+	const CLE_CAMERA_PREFEREE = 'stoguard:camera-preferee';
+	const INTERVALLE_DETECTION_MS = 400;
+
 	let etat = $state<Etat>('demarrage');
 	let videoEl: HTMLVideoElement | undefined = $state();
+	let cameras = $state<MediaDeviceInfo[]>([]);
+	let cameraActive = $state('');
 
-	const INTERVALLE_DETECTION_MS = 400;
+	// État de fonctionnement du scan, en dehors du $state : rien ici n'a
+	// besoin d'être réactif, seul l'affichage (etat, cameras, cameraActive)
+	// en a besoin.
+	let flux: MediaStream | null = null;
+	let idIntervalle: ReturnType<typeof setInterval> | undefined;
+	let detecteur: BarcodeDetector | undefined;
+	let detectionEnCours = false;
+	let demonte = false;
+
+	function arreterFlux() {
+		if (idIntervalle !== undefined) {
+			clearInterval(idIntervalle);
+			idIntervalle = undefined;
+		}
+		if (flux) {
+			// Une caméra qui reste allumée en arrière-plan sur un téléphone,
+			// c'est le voyant qui reste vert et la batterie qui fond : on
+			// arrête chaque piste explicitement avant d'en ouvrir une autre.
+			flux.getTracks().forEach((piste) => piste.stop());
+			flux = null;
+		}
+	}
+
+	async function detecter() {
+		if (!detecteur || detectionEnCours || !videoEl || videoEl.readyState < 2) return;
+		detectionEnCours = true;
+		try {
+			const codes = await detecteur.detect(videoEl);
+			if (codes.length > 0 && !demonte) {
+				const ean = codes[0].rawValue;
+				arreterFlux();
+				await goto(`/ajouter?ean=${encodeURIComponent(ean)}`);
+			}
+		} catch {
+			// Image de la frame illisible pour ce cycle : on retente au
+			// prochain intervalle plutôt que d'interrompre le scan.
+		} finally {
+			detectionEnCours = false;
+		}
+	}
+
+	/**
+	 * Ouvre la caméra demandée (deviceId précis) ou, à défaut, la caméra
+	 * arrière par défaut. Arrête proprement le flux précédent avant d'en
+	 * ouvrir un nouveau, pour ne jamais laisser deux flux tourner en
+	 * parallèle.
+	 */
+	async function ouvrirCamera(deviceId?: string) {
+		arreterFlux();
+
+		const contraintes: MediaStreamConstraints = deviceId
+			? { video: { deviceId: { exact: deviceId } } }
+			: { video: { facingMode: 'environment' } };
+
+		try {
+			flux = await navigator.mediaDevices.getUserMedia(contraintes);
+		} catch (erreur) {
+			// La caméra mémorisée (localStorage) n'existe plus, par exemple
+			// après un changement d'appareil : on retombe proprement sur le
+			// comportement par défaut plutôt que de rester bloqué en erreur.
+			if (deviceId && erreur instanceof DOMException && erreur.name === 'OverconstrainedError') {
+				localStorage.removeItem(CLE_CAMERA_PREFEREE);
+				await ouvrirCamera();
+				return;
+			}
+			throw erreur;
+		}
+
+		if (demonte) {
+			flux.getTracks().forEach((piste) => piste.stop());
+			return;
+		}
+
+		if (videoEl) videoEl.srcObject = flux;
+		await videoEl?.play();
+		etat = 'pret';
+		cameraActive = flux.getVideoTracks()[0]?.getSettings().deviceId ?? '';
+
+		if (idIntervalle === undefined) {
+			idIntervalle = setInterval(detecter, INTERVALLE_DETECTION_MS);
+		}
+	}
+
+	async function changerCamera(deviceId: string) {
+		try {
+			localStorage.setItem(CLE_CAMERA_PREFEREE, deviceId);
+			await ouvrirCamera(deviceId);
+		} catch {
+			etat = 'erreur';
+		}
+	}
 
 	$effect(() => {
 		if (!('BarcodeDetector' in window) || window.BarcodeDetector === undefined) {
@@ -14,60 +109,21 @@
 			return;
 		}
 
-		let flux: MediaStream | null = null;
-		let idIntervalle: ReturnType<typeof setInterval> | undefined;
-		let detectionEnCours = false;
-		let demonte = false;
-
-		function arreterFlux() {
-			if (idIntervalle !== undefined) {
-				clearInterval(idIntervalle);
-				idIntervalle = undefined;
-			}
-			if (flux) {
-				// Une caméra qui reste allumée en arrière-plan sur un téléphone,
-				// c'est le voyant qui reste vert et la batterie qui fond : on
-				// arrête chaque piste explicitement, pas seulement la référence.
-				flux.getTracks().forEach((piste) => piste.stop());
-				flux = null;
-			}
-		}
-
-		async function detecter(detecteur: BarcodeDetector) {
-			if (detectionEnCours || !videoEl || videoEl.readyState < 2) return;
-			detectionEnCours = true;
-			try {
-				const codes = await detecteur.detect(videoEl);
-				if (codes.length > 0 && !demonte) {
-					const ean = codes[0].rawValue;
-					arreterFlux();
-					await goto(`/ajouter?ean=${encodeURIComponent(ean)}`);
-				}
-			} catch {
-				// Image de la frame illisible pour ce cycle : on retente au
-				// prochain intervalle plutôt que d'interrompre le scan.
-			} finally {
-				detectionEnCours = false;
-			}
-		}
+		detecteur = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] });
 
 		(async () => {
 			try {
-				flux = await navigator.mediaDevices.getUserMedia({
-					video: { facingMode: 'environment' }
-				});
+				// Les libellés (label) des caméras sont vides tant que
+				// l'autorisation n'a pas été accordée : on ouvre donc d'abord
+				// le flux (caméra mémorisée ou par défaut), et on énumère
+				// seulement ensuite.
+				const memorisee = localStorage.getItem(CLE_CAMERA_PREFEREE) ?? undefined;
+				await ouvrirCamera(memorisee);
 
-				if (demonte) {
-					flux.getTracks().forEach((piste) => piste.stop());
-					return;
-				}
+				if (demonte) return;
 
-				if (videoEl) videoEl.srcObject = flux;
-				await videoEl?.play();
-				etat = 'pret';
-
-				const detecteur = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] });
-				idIntervalle = setInterval(() => detecter(detecteur), INTERVALLE_DETECTION_MS);
+				const appareils = await navigator.mediaDevices.enumerateDevices();
+				cameras = appareils.filter((a) => a.kind === 'videoinput');
 			} catch (erreur) {
 				if (erreur instanceof DOMException && erreur.name === 'NotAllowedError') {
 					etat = 'refuse';
@@ -92,6 +148,20 @@
 	<a class="retour" href="/">← Stock</a>
 	<h1>Scanner</h1>
 </header>
+
+{#if cameras.length > 1}
+	<label class="choix-camera-label" for="choix-camera">Caméra</label>
+	<select
+		id="choix-camera"
+		class="choix-camera"
+		value={cameraActive}
+		onchange={(e) => changerCamera(e.currentTarget.value)}
+	>
+		{#each cameras as camera, i (camera.deviceId)}
+			<option value={camera.deviceId}>{camera.label || `Caméra ${i + 1}`}</option>
+		{/each}
+	</select>
+{/if}
 
 <div class="apercu">
 	<!-- svelte-ignore a11y_media_has_caption -->
@@ -137,6 +207,26 @@
 		text-decoration: none;
 		font-weight: 600;
 		white-space: nowrap;
+	}
+
+	.choix-camera-label {
+		display: block;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #24292f;
+		margin-bottom: 0.3rem;
+	}
+
+	.choix-camera {
+		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
+		font-size: 16px;
+		padding: 0.5rem;
+		border: 1px solid #d0d7de;
+		border-radius: 8px;
+		background: #fff;
+		width: 100%;
+		box-sizing: border-box;
+		margin-bottom: 0.75rem;
 	}
 
 	.apercu {
