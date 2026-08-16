@@ -23,6 +23,7 @@
 <header>
 	<h1>Mon stock</h1>
 	<div class="actions-entete">
+		<a class="scanner" href="/scanner">Scanner</a>
 		<a class="ajouter" href="/ajouter">+ Ajouter</a>
 		<form method="POST" action="?/deconnexion">
 			<button type="submit" class="deconnexion">Déconnexion</button>
@@ -104,6 +105,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		flex-wrap: wrap;
 		gap: 0.75rem;
 		margin-bottom: 1rem;
 	}
@@ -116,7 +118,19 @@
 	.actions-entete {
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
 		gap: 0.5rem;
+	}
+
+	.scanner {
+		background: none;
+		border: 1px solid #1f6feb;
+		color: #1f6feb;
+		text-decoration: none;
+		padding: 0.6rem 0.9rem;
+		border-radius: 8px;
+		font-weight: 600;
+		white-space: nowrap;
 	}
 
 	.ajouter {
