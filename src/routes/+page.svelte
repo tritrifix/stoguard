@@ -4,6 +4,10 @@
 
 	let { data }: PageProps = $props();
 
+	// Quantité à sortir, saisie par l'utilisateur, uniquement pour les
+	// articles à plus d'une unité (clé = id de l'article). Préremplie à 1.
+	let quantites = $state<Record<string, number>>({});
+
 	// timeZone UTC : les dates de péremption sont stockées à minuit UTC comme
 	// jours calendaires. Les formater dans le fuseau local les décalerait.
 	const formatDate = new Intl.DateTimeFormat('fr-FR', {
@@ -73,6 +77,22 @@
 					<span class="etat">{libelleEtat(ligne.etat, ligne.typeDate, ligne.jours)}</span>
 				</p>
 
+				{#if ligne.quantite > 1}
+					<label class="quantite-label" for={`qte-${ligne.id}`}>
+						Quantité à sortir (sur {formatQuantite(ligne.quantite)})
+					</label>
+					<input
+						id={`qte-${ligne.id}`}
+						class="quantite-input"
+						type="number"
+						step="0.001"
+						min="0.001"
+						max={ligne.quantite}
+						value={quantites[ligne.id] ?? 1}
+						oninput={(e) => (quantites[ligne.id] = e.currentTarget.valueAsNumber)}
+					/>
+				{/if}
+
 				<div class="actions">
 					{#if !ligne.estOuvert}
 						<form method="POST" action="?/ouvrir">
@@ -82,15 +102,18 @@
 					{/if}
 					<form method="POST" action="?/consommer">
 						<input type="hidden" name="id" value={ligne.id} />
+						<input type="hidden" name="quantite" value={quantites[ligne.id] ?? 1} />
 						<button type="submit" class="primaire">Consommé</button>
 					</form>
 					<form method="POST" action="?/jeter">
 						<input type="hidden" name="id" value={ligne.id} />
+						<input type="hidden" name="quantite" value={quantites[ligne.id] ?? 1} />
 						<input type="hidden" name="motif" value="JETE_PERIME" />
 						<button type="submit" class="danger">Jeté (périmé)</button>
 					</form>
 					<form method="POST" action="?/jeter">
 						<input type="hidden" name="id" value={ligne.id} />
+						<input type="hidden" name="quantite" value={quantites[ligne.id] ?? 1} />
 						<input type="hidden" name="motif" value="JETE_AUTRE" />
 						<button type="submit" class="danger">Jeté (autre)</button>
 					</form>
@@ -254,6 +277,25 @@
 		align-items: center;
 		gap: 0.4rem;
 		flex-wrap: wrap;
+	}
+
+	.quantite-label {
+		display: block;
+		font-size: 0.78rem;
+		color: #57606a;
+		margin: 0 0 0.25rem;
+	}
+
+	.quantite-input {
+		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
+		font-size: 16px;
+		padding: 0.5rem;
+		border: 1px solid #d0d7de;
+		border-radius: 8px;
+		background: #fff;
+		width: 100%;
+		box-sizing: border-box;
+		margin-bottom: 0.6rem;
 	}
 
 	.badge {

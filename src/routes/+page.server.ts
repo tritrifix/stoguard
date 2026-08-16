@@ -1,6 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { Prisma } from '../../generated/prisma/client.ts';
 import { prisma } from '$lib/server/db';
 import { aujourdhui, dateEffective, etatArticle, joursRestants, severite } from '$lib/dates';
+import { calculerSortiePartielle } from '$lib/quantite';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -58,8 +60,18 @@ export const load: PageServerLoad = async ({ url }) => {
 	return { lignes, emplacements, emplacementFiltre };
 };
 
-/** Sort l'article du stock en enregistrant le motif dans l'historique. */
-async function sortirDuStock(articleId: string, motif: 'CONSOMME' | 'JETE_PERIME' | 'JETE_AUTRE') {
+/**
+ * Sort tout ou partie d'un article du stock, en enregistrant le motif et la
+ * quantité dans l'historique. quantiteSaisie n'est utilisée que si l'article
+ * a plus d'une unité : à quantité 1, le champ n'est pas affiché côté client
+ * (comportement inchangé, un clic = sortie complète), donc on sort tout sans
+ * en tenir compte même si un contenu inattendu y traîne.
+ */
+async function sortirDuStock(
+	articleId: string,
+	motif: 'CONSOMME' | 'JETE_PERIME' | 'JETE_AUTRE',
+	quantiteSaisie: string
+) {
 	const article = await prisma.articleStock.findUnique({
 		where: { id: articleId },
 		select: { quantite: true, dateSortie: true }
@@ -69,13 +81,34 @@ async function sortirDuStock(articleId: string, motif: 'CONSOMME' | 'JETE_PERIME
 		return fail(404, { erreur: "Cet article n'est plus en stock." });
 	}
 
+	let quantiteSortie: Prisma.Decimal;
+	if (article.quantite.equals(1)) {
+		quantiteSortie = article.quantite;
+	} else {
+		const texte = quantiteSaisie.trim().replace(',', '.');
+		try {
+			quantiteSortie = new Prisma.Decimal(texte || '0');
+		} catch {
+			return fail(400, { erreur: 'Quantité invalide.' });
+		}
+	}
+
+	const resultat = calculerSortiePartielle(article.quantite, quantiteSortie);
+	if (resultat === null) {
+		return fail(400, {
+			erreur: 'Quantité invalide : doit être supérieure à zéro et ne peut pas dépasser ce qu’il reste.'
+		});
+	}
+
 	await prisma.$transaction([
 		prisma.consommation.create({
-			data: { articleStockId: articleId, motif, quantite: article.quantite }
+			data: { articleStockId: articleId, motif, quantite: quantiteSortie }
 		}),
 		prisma.articleStock.update({
 			where: { id: articleId },
-			data: { dateSortie: new Date() }
+			data: resultat.articleEpuise
+				? { quantite: resultat.nouvelleQuantite, dateSortie: new Date() }
+				: { quantite: resultat.nouvelleQuantite }
 		})
 	]);
 }
@@ -109,14 +142,22 @@ export const actions: Actions = {
 
 	consommer: async ({ request }) => {
 		const donnees = await request.formData();
-		const echec = await sortirDuStock(String(donnees.get('id') ?? ''), 'CONSOMME');
+		const echec = await sortirDuStock(
+			String(donnees.get('id') ?? ''),
+			'CONSOMME',
+			String(donnees.get('quantite') ?? '')
+		);
 		return echec ?? { succes: true };
 	},
 
 	jeter: async ({ request }) => {
 		const donnees = await request.formData();
 		const motif = donnees.get('motif') === 'JETE_AUTRE' ? 'JETE_AUTRE' : 'JETE_PERIME';
-		const echec = await sortirDuStock(String(donnees.get('id') ?? ''), motif);
+		const echec = await sortirDuStock(
+			String(donnees.get('id') ?? ''),
+			motif,
+			String(donnees.get('quantite') ?? '')
+		);
 		return echec ?? { succes: true };
 	},
 
