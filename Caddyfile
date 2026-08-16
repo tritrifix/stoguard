@@ -2,6 +2,26 @@
 # Pour activer le HTTPS automatique (Let's Encrypt), remplace ":80" par ton
 # nom de domaine (ex. "stock.mondomaine.fr") une fois le DNS pointé sur la VM —
 # Caddy gérera alors la redirection HTTP -> HTTPS et le renouvellement du certificat tout seul.
+{
+	servers {
+		# Par défaut, reverse_proxy ignore les en-têtes X-Forwarded-* entrants
+		# et les remplace par ce qu'il observe lui-même (le client immédiat),
+		# sauf si celui-ci figure dans trusted_proxies. Sans ce bloc, l'app
+		# reconstruit son origine en http:// même quand un reverse proxy
+		# externe (HAProxy, etc.) a terminé le TLS et l'annonce en https via
+		# X-Forwarded-Proto — d'où un rejet CSRF sur tous les formulaires, et
+		# un X-Forwarded-For écrasé qui neutralise le limiteur anti-force-brute
+		# de /login (tous les visiteurs partagent alors un seul compteur).
+		#
+		# "private_ranges" plutôt qu'une IP précise : la publication de port
+		# Docker (docker-compose.yml) masque l'IP source réelle du reverse
+		# proxy externe, qui n'est donc pas prévisible ici. Sans risque : ce
+		# conteneur n'est jamais joignable directement depuis Internet, seul
+		# le reverse proxy externe l'atteint, depuis le réseau privé.
+		trusted_proxies static private_ranges
+	}
+}
+
 :80 {
 	reverse_proxy app:3000
 }
