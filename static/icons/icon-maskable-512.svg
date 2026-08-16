@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+	<!-- Plein cadre, sans coins arrondis : l'OS applique son propre masque
+	     (cercle, "squircle"...) et le contenu doit rester lisible quel que
+	     soit le découpage. Coche centrée dans la zone de sécurité usuelle
+	     (~66% du diamètre), loin des bords. -->
+	<rect width="512" height="512" fill="#1f6feb" />
+	<path
+		d="M128,270 L220,350 L390,170"
+		fill="none"
+		stroke="#ffffff"
+		stroke-width="52"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+	/>
+</svg>
