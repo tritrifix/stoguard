@@ -1,15 +1,80 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { parseJour } from '$lib/dates';
+import { recupererProduitOpenFoodFacts, type ProduitOpenFoodFacts } from '$lib/server/openfoodfacts';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
-	const [categories, emplacements] = await Promise.all([
+const FRAICHEUR_CACHE_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
+
+/**
+ * Cache local des fiches produit, indexé sur l'EAN. Avant tout appel
+ * réseau, sert la fiche en base si elle a moins de 30 jours. Si Open Food
+ * Facts ne connaît pas (encore) le produit et qu'aucune fiche n'existe déjà,
+ * ne crée rien : une fiche vide (sans nom) n'aurait aucun sens à mettre en
+ * cache. Sur échec réseau ou "non trouvé" alors qu'une fiche existait déjà
+ * (même périmée), on la ressert plutôt que de perdre l'information.
+ */
+async function obtenirProduitParEan(ean: string): Promise<ProduitOpenFoodFacts | null> {
+	const existant = await prisma.produit.findUnique({ where: { ean } });
+
+	const frais =
+		existant?.dateMajCache != null &&
+		Date.now() - existant.dateMajCache.getTime() < FRAICHEUR_CACHE_MS;
+
+	if (existant && frais) {
+		return {
+			nom: existant.nom,
+			marque: existant.marque,
+			contenance: existant.contenance,
+			imageUrl: existant.imageUrl
+		};
+	}
+
+	const donnees = await recupererProduitOpenFoodFacts(ean);
+
+	if (donnees === null) {
+		if (existant === null) return null;
+		return {
+			nom: existant.nom,
+			marque: existant.marque,
+			contenance: existant.contenance,
+			imageUrl: existant.imageUrl
+		};
+	}
+
+	const produit = await prisma.produit.upsert({
+		where: { ean },
+		create: { ean, saisiManuelle: false, dateMajCache: new Date(), ...donnees },
+		update: { saisiManuelle: false, dateMajCache: new Date(), ...donnees }
+	});
+
+	return {
+		nom: produit.nom,
+		marque: produit.marque,
+		contenance: produit.contenance,
+		imageUrl: produit.imageUrl
+	};
+}
+
+export const load: PageServerLoad = async ({ url }) => {
+	const ean = url.searchParams.get('ean');
+
+	const [categories, emplacements, prefill] = await Promise.all([
 		prisma.categorie.findMany({ orderBy: { nom: 'asc' } }),
-		prisma.emplacement.findMany({ orderBy: { nom: 'asc' } })
+		prisma.emplacement.findMany({ orderBy: { nom: 'asc' } }),
+		ean ? obtenirProduitParEan(ean) : Promise.resolve(null)
 	]);
 
-	return { categories, emplacements };
+	return {
+		categories,
+		emplacements,
+		ean,
+		prefill,
+		// Un EAN a été scanné mais ni le cache local ni Open Food Facts ne
+		// connaissent ce produit : à distinguer de "pas de scan du tout"
+		// (ean === null), où ce message n'a pas lieu d'être.
+		produitInconnu: ean !== null && prefill === null
+	};
 };
 
 export const actions: Actions = {
@@ -27,7 +92,8 @@ export const actions: Actions = {
 			dateImprimee: texte('dateImprimee'),
 			typeDate: texte('typeDate'),
 			dejaOuvert: donnees.get('dejaOuvert') === 'on',
-			dateOuverture: texte('dateOuverture')
+			dateOuverture: texte('dateOuverture'),
+			ean: texte('ean')
 		};
 
 		const erreurs: Record<string, string> = {};
@@ -84,12 +150,21 @@ export const actions: Actions = {
 			return fail(400, { erreurs, saisie });
 		}
 
+		const eanSaisi = saisie.ean || null;
+
 		// Un même produit peut avoir plusieurs exemplaires en stock : on réutilise
 		// la fiche produit existante plutôt que d'en créer une par exemplaire.
-		const existant = await prisma.produit.findFirst({
-			where: { nom: { equals: saisie.nom, mode: 'insensitive' } },
-			select: { id: true }
-		});
+		// L'EAN est cherché en priorité : si le chargement de la page a déjà mis
+		// en cache une fiche pour ce code (trouvée sur Open Food Facts), la
+		// retrouver par le nom ne suffit pas à coup sûr (l'utilisateur a pu
+		// modifier le nom préempli) et créer une deuxième fiche avec le même EAN
+		// violerait sa contrainte d'unicité.
+		const existant =
+			(eanSaisi ? await prisma.produit.findUnique({ where: { ean: eanSaisi }, select: { id: true } }) : null) ??
+			(await prisma.produit.findFirst({
+				where: { nom: { equals: saisie.nom, mode: 'insensitive' } },
+				select: { id: true }
+			}));
 
 		const produitId =
 			existant?.id ??
@@ -100,8 +175,11 @@ export const actions: Actions = {
 						marque: saisie.marque || null,
 						contenance: saisie.contenance || null,
 						categorieId: saisie.categorieId || null,
+						// Cette branche ne s'atteint que si aucune fiche n'existait déjà
+						// pour cet EAN ou ce nom : la saisie reste manuelle même quand un
+						// EAN a été scanné mais qu'Open Food Facts ne le connaissait pas.
 						saisiManuelle: true,
-						ean: null
+						ean: eanSaisi
 					},
 					select: { id: true }
 				})

@@ -7,6 +7,13 @@
 	const saisie = $derived(form?.saisie);
 	const erreurs = $derived(form?.erreurs ?? {});
 
+	// Priorité à ce que l'utilisateur a déjà tapé (réaffichage après une
+	// erreur de validation), sinon au préremplissage issu du scan.
+	const nomInitial = $derived(saisie?.nom ?? data.prefill?.nom ?? '');
+	const marqueInitial = $derived(saisie?.marque ?? data.prefill?.marque ?? '');
+	const contenanceInitial = $derived(saisie?.contenance ?? data.prefill?.contenance ?? '');
+	const eanATransmettre = $derived(saisie?.ean ?? data.ean ?? '');
+
 	// null tant que l'utilisateur n'a pas touché la case : on retombe alors sur
 	// l'état renvoyé par le serveur, ce qui réaffiche le champ "date
 	// d'ouverture" après un envoi refusé.
@@ -24,19 +31,33 @@
 </header>
 
 <form method="POST">
+	<input type="hidden" name="ean" value={eanATransmettre} />
+
+	{#if data.produitInconnu}
+		<p class="info">
+			Produit inconnu d'Open Food Facts, complète les informations. La fiche
+			créée gardera le code-barre scanné : un prochain scan du même produit
+			le retrouvera directement.
+		</p>
+	{/if}
+
+	{#if data.prefill?.imageUrl}
+		<img class="photo-produit" src={data.prefill.imageUrl} alt="" />
+	{/if}
+
 	<label for="nom">Nom du produit *</label>
-	<input id="nom" name="nom" required value={saisie?.nom ?? ''} aria-invalid={!!erreurs.nom} />
+	<input id="nom" name="nom" required value={nomInitial} aria-invalid={!!erreurs.nom} />
 	{#if erreurs.nom}<p class="erreur">{erreurs.nom}</p>{/if}
 
 	<label for="marque">Marque</label>
-	<input id="marque" name="marque" value={saisie?.marque ?? ''} />
+	<input id="marque" name="marque" value={marqueInitial} />
 
 	<label for="contenance">Contenance</label>
 	<input
 		id="contenance"
 		name="contenance"
 		placeholder="500 g, 1 L…"
-		value={saisie?.contenance ?? ''}
+		value={contenanceInitial}
 	/>
 
 	<label for="categorieId">Catégorie</label>
@@ -218,6 +239,24 @@
 		color: #cf222e;
 		font-size: 0.82rem;
 		margin: 0.3rem 0 0;
+	}
+
+	.info {
+		background: #ddf4ff;
+		color: #0969da;
+		border-radius: 8px;
+		padding: 0.7rem 0.85rem;
+		font-size: 0.85rem;
+		margin: 0 0 1rem;
+	}
+
+	.photo-produit {
+		display: block;
+		max-width: 140px;
+		max-height: 140px;
+		object-fit: contain;
+		margin: 0 auto 1rem;
+		border-radius: 8px;
 	}
 
 	button {
