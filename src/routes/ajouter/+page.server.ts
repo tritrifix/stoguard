@@ -94,6 +94,7 @@ export const actions: Actions = {
 			typeDate: texte('typeDate'),
 			dejaOuvert: donnees.get('dejaOuvert') === 'on',
 			dateOuverture: texte('dateOuverture'),
+			delaiOuverture: texte('delaiOuverture'),
 			ean: texte('ean')
 		};
 
@@ -126,6 +127,19 @@ export const actions: Actions = {
 			dateOuverture = parseJour(saisie.dateOuverture);
 			if (dateOuverture === null) {
 				erreurs.dateOuverture = "Indiquez la date d'ouverture.";
+			}
+		}
+
+		// Optionnel : laisser vide retombe sur le délai de la catégorie (voir
+		// dateEffective dans $lib/dates). Ce champ ne fait que surcharger cette
+		// valeur pour cet exemplaire précis.
+		let delaiOuverture: number | null = null;
+		if (saisie.delaiOuverture !== '') {
+			const valeur = Number(saisie.delaiOuverture);
+			if (!Number.isInteger(valeur) || valeur < 0) {
+				erreurs.delaiOuverture = 'Le délai doit être un nombre entier de jours, positif ou nul.';
+			} else {
+				delaiOuverture = valeur;
 			}
 		}
 
@@ -194,7 +208,8 @@ export const actions: Actions = {
 				dateImprimee: dateImprimee!,
 				typeDate: saisie.typeDate as 'DLC' | 'DDM',
 				estOuvert: saisie.dejaOuvert,
-				dateOuverture
+				dateOuverture,
+				delaiOuverture
 			}
 		});
 

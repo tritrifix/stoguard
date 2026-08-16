@@ -20,6 +20,13 @@
 	let caseCochee = $state<boolean | null>(null);
 	const dejaOuvert = $derived(caseCochee ?? saisie?.dejaOuvert ?? false);
 
+	// Même idiome : null tant que l'utilisateur n'a pas changé la catégorie,
+	// pour afficher le délai qu'elle apporterait à côté du champ de
+	// surcharge, y compris juste après un envoi refusé.
+	let categorieChoisie = $state<string | null>(null);
+	const categorieId = $derived(categorieChoisie ?? saisie?.categorieId ?? '');
+	const categorieSelectionnee = $derived(data.categories.find((c) => c.id === categorieId));
+
 	const dateDuJour = versChampDate(aujourdhui());
 </script>
 
@@ -61,15 +68,44 @@
 	/>
 
 	<label for="categorieId">Catégorie</label>
-	<select id="categorieId" name="categorieId">
+	<select
+		id="categorieId"
+		name="categorieId"
+		value={categorieId}
+		onchange={(e) => (categorieChoisie = e.currentTarget.value)}
+	>
 		<option value="">— Aucune —</option>
 		{#each data.categories as categorie (categorie.id)}
-			<option value={categorie.id} selected={categorie.id === saisie?.categorieId}>
-				{categorie.nom}
-			</option>
+			<option value={categorie.id}>{categorie.nom}</option>
 		{/each}
 	</select>
 	{#if erreurs.categorieId}<p class="erreur">{erreurs.categorieId}</p>{/if}
+
+	<label for="delaiOuverture">
+		Délai après ouverture (jours) — laisser vide pour utiliser celui de la
+		catégorie
+	</label>
+	<input
+		id="delaiOuverture"
+		name="delaiOuverture"
+		type="number"
+		step="1"
+		min="0"
+		inputmode="numeric"
+		value={saisie?.delaiOuverture ?? ''}
+		aria-invalid={!!erreurs.delaiOuverture}
+	/>
+	{#if erreurs.delaiOuverture}<p class="erreur">{erreurs.delaiOuverture}</p>{/if}
+	{#if categorieSelectionnee}
+		<p class="info-categorie">
+			{#if categorieSelectionnee.delaiApresOuverture !== null}
+				La catégorie « {categorieSelectionnee.nom} » propose {categorieSelectionnee.delaiApresOuverture}
+				jour{categorieSelectionnee.delaiApresOuverture > 1 ? 's' : ''}.
+			{:else}
+				La catégorie « {categorieSelectionnee.nom} » n'a pas de délai par défaut.
+			{/if}
+		</p>
+	{/if}
 
 	<label for="emplacementId">Emplacement *</label>
 	<select id="emplacementId" name="emplacementId" required aria-invalid={!!erreurs.emplacementId}>
@@ -248,6 +284,12 @@
 		padding: 0.7rem 0.85rem;
 		font-size: 0.85rem;
 		margin: 0 0 1rem;
+	}
+
+	.info-categorie {
+		margin: 0.35rem 0 0;
+		font-size: 0.8rem;
+		color: #57606a;
 	}
 
 	.photo-produit {
