@@ -17,6 +17,14 @@ if (!env.AUTH_PASSWORD_HASH) {
 if (!env.SESSION_SECRET) {
 	throw new Error('SESSION_SECRET n\'est pas défini dans .env.');
 }
+// Simple courtoisie envers Open Food Facts (leur permettre de contacter
+// l'auteur en cas d'usage anormal), pas une exigence de sécurité : on ne
+// bloque pas le démarrage, juste un avertissement.
+if (!env.OFF_CONTACT_EMAIL) {
+	console.warn(
+		"OFF_CONTACT_EMAIL n'est pas défini : Open Food Facts recevra un User-Agent avec une adresse de contact générique. Renseignez cette variable dans .env."
+	);
+}
 
 const COOKIE_SESSION = 'session';
 

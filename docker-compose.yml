@@ -32,6 +32,10 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}
+      # Courtoisie envers Open Food Facts, pas une exigence de sécurité :
+      # contrairement à AUTH_PASSWORD_HASH, une valeur absente ne bloque pas
+      # le démarrage, juste un avertissement dans les logs au lancement.
+      OFF_CONTACT_EMAIL: ${OFF_CONTACT_EMAIL:-contact@example.com}
     expose:
       - "3000"
     depends_on:

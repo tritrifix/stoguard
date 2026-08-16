@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { prisma } from '$lib/server/db';
 import { parseJour } from '$lib/dates';
 import { recupererProduitOpenFoodFacts, type ProduitOpenFoodFacts } from '$lib/server/openfoodfacts';
@@ -30,7 +31,7 @@ async function obtenirProduitParEan(ean: string): Promise<ProduitOpenFoodFacts |
 		};
 	}
 
-	const donnees = await recupererProduitOpenFoodFacts(ean);
+	const donnees = await recupererProduitOpenFoodFacts(ean, env.OFF_CONTACT_EMAIL);
 
 	if (donnees === null) {
 		if (existant === null) return null;

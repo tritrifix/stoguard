@@ -45,6 +45,7 @@ Puis éditer `.env` et renseigner chaque variable :
 | `SESSION_SECRET`      | Clé utilisée pour signer les cookies de session.                                              | À générer aléatoirement, voir commande ci-dessous.                                      |
 | `AUTH_PASSWORD_HASH`  | Hash (scrypt) du mot de passe de connexion à l'application.                                   | **Laisser vide pour l'instant**, généré à l'étape suivante. L'application refuse de démarrer tant qu'il est vide. |
 | `TZ`                  | Fuseau horaire du conteneur. Il détermine à quel moment on change de jour, donc le calcul des « jours restants » avant péremption. | Facultatif : `Europe/Paris` par défaut. Ne changer que si vous n'êtes pas en France métropolitaine. |
+| `OFF_CONTACT_EMAIL`   | Adresse de contact envoyée à Open Food Facts dans le User-Agent (`Stoguard/0.1 (<cette adresse>)`), pour qu'ils puissent joindre l'auteur en cas d'usage anormal. | Facultatif : `contact@example.com` par défaut si absent (juste un avertissement dans les logs, l'application démarre quand même). La valeur d'exemple fonctionne, mais il est correct d'y mettre une vraie adresse. |
 
 Générer un secret aléatoire (utilisable pour `POSTGRES_PASSWORD` comme pour
 `SESSION_SECRET`) :
@@ -68,6 +69,8 @@ DATABASE_URL=postgresql://stoguard:<même mot de passe que POSTGRES_PASSWORD>@db
 SESSION_SECRET=<autre valeur générée avec openssl rand -hex 32>
 
 AUTH_PASSWORD_HASH=
+
+OFF_CONTACT_EMAIL=contact@example.com
 ```
 
 `.env` n'est jamais commité (il est dans `.gitignore`) : chaque machine de

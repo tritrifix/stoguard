@@ -143,6 +143,10 @@ base est joignable sur `127.0.0.1:5432` (le port est publié en loopback
 uniquement). `.env.local` est prioritaire côté outillage local, et Docker
 Compose ne le lit jamais.
 
+`OFF_CONTACT_EMAIL` (facultatif) : adresse de contact envoyée à Open Food
+Facts avec chaque requête. Une valeur d'exemple est utilisée si elle est
+absente ; détails dans [DEPLOY.md](DEPLOY.md).
+
 ### 3. Dépendances et données de référence
 
 ```sh

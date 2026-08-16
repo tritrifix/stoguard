@@ -4,15 +4,23 @@
 
 const ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product';
 // N'en demande que ce dont on a besoin : la réponse complète fait plusieurs
-// centaines de kilooctets. categories_tags est demandé pour un usage futur
-// (l'app ne l'exploite pas encore : pas de correspondance fiable entre les
-// tags OFF, ex. "en:dairies", et les Categorie.nom locales sans mapping
-// explicite, qu'il vaut mieux ne pas inventer).
-const CHAMPS = 'product_name,brands,quantity,image_url,categories_tags';
-// Format exigé par la politique Open Food Facts : "AppName/Version
-// (ContactEmail)". https://openfoodfacts.github.io/openfoodfacts-server/api/
-const USER_AGENT = 'Stoguard/0.1 (contact@example.com)';
+// centaines de kilooctets. Pas de categories_tags : l'app ne fait pas
+// correspondre les tags OFF (ex. "en:dairies") aux Categorie.nom locales —
+// un mauvais mappage donnerait un mauvais délai après ouverture, donc un
+// mauvais calcul de date effective, et il vaut mieux ne pas le deviner.
+const CHAMPS = 'product_name,brands,quantity,image_url';
 const DELAI_MS = 5000;
+// Format exigé par la politique Open Food Facts : "AppName/Version
+// (ContactEmail)", pour pouvoir contacter l'auteur en cas d'usage anormal.
+// https://openfoodfacts.github.io/openfoodfacts-server/api/
+// Valeur de repli si OFF_CONTACT_EMAIL n'est pas renseigné : ne jamais coder
+// en dur une vraie adresse ici, ce fichier est dans un dépôt public.
+const CONTACT_PAR_DEFAUT = 'contact@example.com';
+
+function userAgent(contactEmail: string | undefined): string {
+	const contact = contactEmail?.trim() || CONTACT_PAR_DEFAUT;
+	return `Stoguard/0.1 (${contact})`;
+}
 
 export type ProduitOpenFoodFacts = {
 	nom: string;
@@ -62,12 +70,19 @@ export function convertirProduitOpenFoodFacts(reponse: unknown): ProduitOpenFood
  * erreur, dépassement du délai ou coupure réseau renvoient tous null — dans
  * les trois cas, l'appelant doit pouvoir basculer sur la saisie manuelle
  * sans que ça bloque quoi que ce soit.
+ *
+ * contactEmail vient de OFF_CONTACT_EMAIL (lu par l'appelant, pas ici : ce
+ * fichier reste volontairement sans dépendance à $env, voir l'en-tête).
+ * Absent ou vide, CONTACT_PAR_DEFAUT est utilisé à la place.
  */
-export async function recupererProduitOpenFoodFacts(ean: string): Promise<ProduitOpenFoodFacts | null> {
+export async function recupererProduitOpenFoodFacts(
+	ean: string,
+	contactEmail?: string
+): Promise<ProduitOpenFoodFacts | null> {
 	try {
 		const url = `${ENDPOINT}/${encodeURIComponent(ean)}.json?fields=${CHAMPS}`;
 		const reponse = await fetch(url, {
-			headers: { 'User-Agent': USER_AGENT },
+			headers: { 'User-Agent': userAgent(contactEmail) },
 			signal: AbortSignal.timeout(DELAI_MS)
 		});
 
