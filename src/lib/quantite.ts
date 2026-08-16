@@ -35,3 +35,24 @@ export function calculerSortiePartielle(
 		articleEpuise: nouvelleQuantite.isZero()
 	};
 }
+
+export type ResultatRestauration = {
+	nouvelleQuantite: Prisma.Decimal;
+};
+
+/**
+ * Calcule la quantité après annulation d'une sortie (Consommé ou Jeté) :
+ * simple addition, mais en Decimal plutôt qu'en number JavaScript, pour la
+ * même raison que calculerSortiePartielle. Toujours possible (contrairement
+ * à une sortie, il n'y a pas de plafond à restaurer) : ne renvoie jamais
+ * null.
+ */
+export function calculerRestauration(
+	quantiteActuelle: string | number | Prisma.Decimal,
+	quantiteARestaurer: string | number | Prisma.Decimal
+): ResultatRestauration {
+	const actuelle = new Prisma.Decimal(quantiteActuelle);
+	const aRestaurer = new Prisma.Decimal(quantiteARestaurer);
+
+	return { nouvelleQuantite: actuelle.plus(aRestaurer) };
+}

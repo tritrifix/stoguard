@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { calculerSortiePartielle } from './quantite.ts';
+import { calculerRestauration, calculerSortiePartielle } from './quantite.ts';
 
 test('sortir une partie du stock laisse le reste attendu', () => {
 	const resultat = calculerSortiePartielle('4', '1');
@@ -49,3 +49,37 @@ test('sortir exactement tout ce qui reste épuise l\'article', () => {
 	assert.ok(resultat);
 	assert.equal(resultat.articleEpuise, true);
 });
+
+test('restaurer une sortie additionne simplement la quantité', () => {
+	const resultat = calculerRestauration('2', '1');
+	assert.equal(resultat.nouvelleQuantite.toString(), '3');
+});
+
+test('restaurer sur un article épuisé (0) le remet en stock', () => {
+	const resultat = calculerRestauration('0', '3');
+	assert.equal(resultat.nouvelleQuantite.toString(), '3');
+});
+
+test(
+	"article à 4, consommé 1 puis 3 (sorti à 0) : restaurer la ligne de 3 ramène à 3, " +
+		'pas à 4 — puis restaurer celle de 1 ramène à 4',
+	() => {
+		const apresConso1 = calculerSortiePartielle('4', '1');
+		assert.ok(apresConso1);
+		assert.equal(apresConso1.nouvelleQuantite.toString(), '3');
+		assert.equal(apresConso1.articleEpuise, false);
+
+		const apresConso2 = calculerSortiePartielle(apresConso1.nouvelleQuantite, '3');
+		assert.ok(apresConso2);
+		assert.equal(apresConso2.nouvelleQuantite.toString(), '0');
+		assert.equal(apresConso2.articleEpuise, true);
+
+		// Restaurer la ligne de 3 (la plus récente) en premier.
+		const apresRestauration1 = calculerRestauration(apresConso2.nouvelleQuantite, '3');
+		assert.equal(apresRestauration1.nouvelleQuantite.toString(), '3');
+
+		// Puis celle de 1.
+		const apresRestauration2 = calculerRestauration(apresRestauration1.nouvelleQuantite, '1');
+		assert.equal(apresRestauration2.nouvelleQuantite.toString(), '4');
+	}
+);

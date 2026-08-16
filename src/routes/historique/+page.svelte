@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 
-	let { data }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 
 	// Date + heure : Consommation.date est un véritable instant (contrairement
 	// à dateImprimee/dateEffective, ancrées à minuit UTC comme jours
@@ -41,6 +41,8 @@
 	<h1>Historique</h1>
 </header>
 
+{#if form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
+
 <ul class="recap">
 	<li class="recap-item recap-consomme">
 		<span class="recap-nombre">{data.recapitulatif.CONSOMME}</span>
@@ -79,16 +81,22 @@
 	<ul class="liste">
 		{#each data.lignes as ligne (ligne.id)}
 			<li class="ligne motif-{ligne.motif}">
-				<span class="pastille" aria-hidden="true">
-					{#if ligne.motif === 'CONSOMME'}✓{:else if ligne.motif === 'JETE_PERIME'}⚠{:else}✕{/if}
-				</span>
-				<div class="details">
-					<p class="nom">{ligne.nom}{#if ligne.marque}{' · '}{ligne.marque}{/if}</p>
-					<p class="meta">
-						×{formatQuantite(ligne.quantite)} · {formatDate.format(ligne.date)}
-					</p>
+				<div class="ligne-principale">
+					<span class="pastille" aria-hidden="true">
+						{#if ligne.motif === 'CONSOMME'}✓{:else if ligne.motif === 'JETE_PERIME'}⚠{:else}✕{/if}
+					</span>
+					<div class="details">
+						<p class="nom">{ligne.nom}{#if ligne.marque}{' · '}{ligne.marque}{/if}</p>
+						<p class="meta">
+							×{formatQuantite(ligne.quantite)} · {formatDate.format(ligne.date)}
+						</p>
+					</div>
+					<span class="motif-libelle">{LIBELLES[ligne.motif]}</span>
 				</div>
-				<span class="motif-libelle">{LIBELLES[ligne.motif]}</span>
+				<form method="POST" action="?/restaurer" class="restaurer-form">
+					<input type="hidden" name="id" value={ligne.id} />
+					<button type="submit" class="restaurer">Restaurer</button>
+				</form>
 			</li>
 		{/each}
 	</ul>
@@ -210,6 +218,16 @@
 		color: #57606a;
 	}
 
+	.erreur {
+		background: #ffebe9;
+		border: 1px solid #cf222e;
+		color: #cf222e;
+		border-radius: 8px;
+		padding: 0.6rem 0.75rem;
+		font-size: 0.85rem;
+		margin: 0 0 1rem;
+	}
+
 	.liste {
 		list-style: none;
 		margin: 0;
@@ -220,14 +238,33 @@
 	}
 
 	.ligne {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
 		border: 1px solid #d0d7de;
 		border-left: 6px solid var(--couleur);
 		border-radius: 10px;
 		padding: 0.6rem 0.75rem;
 		background: #fff;
+	}
+
+	.ligne-principale {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	.restaurer-form {
+		margin-top: 0.5rem;
+		text-align: right;
+	}
+
+	.restaurer {
+		min-height: 36px;
+		padding: 0 0.75rem;
+		font-size: 0.8rem;
+		border: 1px solid #d0d7de;
+		border-radius: 8px;
+		background: #f6f8fa;
+		color: #24292f;
+		cursor: pointer;
 	}
 
 	.motif-CONSOMME {

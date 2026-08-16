@@ -1,6 +1,8 @@
+import { fail } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
+import { calculerRestauration } from '$lib/quantite';
 import type { MotifConsommation } from '../../../generated/prisma/enums.ts';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 const LIMITE = 100;
 const MOTIFS_VALIDES = new Set(['CONSOMME', 'JETE_PERIME', 'JETE_AUTRE']);
@@ -53,4 +55,49 @@ export const load: PageServerLoad = async ({ url }) => {
 		motifFiltre,
 		recapitulatif
 	};
+};
+
+export const actions: Actions = {
+	/**
+	 * Annule une sortie de stock : rend la quantité à l'ArticleStock, le
+	 * remet en stock si besoin (dateSortie -> null), supprime la ligne.
+	 */
+	restaurer: async ({ request }) => {
+		const donnees = await request.formData();
+		const id = String(donnees.get('id') ?? '');
+
+		const consommation = await prisma.consommation.findUnique({
+			where: { id },
+			include: { articleStock: true }
+		});
+
+		if (!consommation) {
+			return fail(404, { erreur: "Cette ligne d'historique n'existe plus." });
+		}
+
+		try {
+			const { nouvelleQuantite } = calculerRestauration(
+				consommation.articleStock.quantite,
+				consommation.quantite
+			);
+
+			await prisma.$transaction([
+				prisma.articleStock.update({
+					where: { id: consommation.articleStockId },
+					data: { quantite: nouvelleQuantite, dateSortie: null }
+				}),
+				prisma.consommation.delete({ where: { id } })
+			]);
+		} catch {
+			// onDelete: Restrict sur Consommation.articleStockId garantit
+			// normalement que l'ArticleStock existe tant que la Consommation
+			// existe, mais un article supprimé hors de l'app (accès direct à
+			// la base) ne doit pas faire planter la restauration.
+			return fail(404, {
+				erreur: "L'article correspondant n'existe plus, restauration impossible."
+			});
+		}
+
+		return { succes: true };
+	}
 };
