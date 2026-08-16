@@ -116,3 +116,20 @@ model Consommation {
   motif    MotifConsommation
   quantite Decimal           @db.Decimal(10, 3)
 }
+
+// Ligne unique (id fixe "singleton") : remplace AUTH_PASSWORD_HASH comme
+// source de vérité une fois amorcée. Voir hooks.server.ts pour l'amorçage
+// au premier démarrage et README/DEPLOY pour ce que ça change côté
+// exploitation.
+model Configuration {
+  id String @id @default("singleton")
+
+  motDePasseHash String
+  // Incrémentée à chaque changement de mot de passe. Portée (signée) dans
+  // le jeton de session : verifierJeton rejette tout jeton dont la version
+  // ne correspond plus à celle-ci, ce qui déconnecte toutes les sessions
+  // d'un coup, y compris celle qui vient de faire le changement.
+  versionSession Int @default(1)
+
+  dateMaj DateTime @updatedAt
+}

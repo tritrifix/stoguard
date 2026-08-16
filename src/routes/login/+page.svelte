@@ -9,6 +9,10 @@
 <div class="connexion">
 	<h1>Stoguard</h1>
 
+	{#if data.motDePasseChange}
+		<p class="info">Mot de passe changé : reconnecte-toi.</p>
+	{/if}
+
 	<form method="POST">
 		<input type="hidden" name="redirectTo" value={form?.redirectTo ?? data.redirectTo} />
 
@@ -73,6 +77,19 @@
 		color: #cf222e;
 		font-size: 0.82rem;
 		margin: 0.4rem 0 0;
+	}
+
+	.info {
+		background: #ddf4ff;
+		color: #0969da;
+		border-radius: 8px;
+		padding: 0.6rem 0.75rem;
+		font-size: 0.85rem;
+		margin: 0 0 1rem;
+		width: 100%;
+		max-width: 320px;
+		box-sizing: border-box;
+		text-align: center;
 	}
 
 	button {

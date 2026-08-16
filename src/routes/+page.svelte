@@ -38,6 +38,7 @@
 <nav class="liens-secondaires">
 	<a href="/historique">Historique</a>
 	<a href="/maintenance">Maintenance</a>
+	<a href="/parametres">Paramètres</a>
 </nav>
 
 <form method="GET" class="filtre">

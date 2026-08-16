@@ -43,7 +43,7 @@ Puis éditer `.env` et renseigner chaque variable :
 | `POSTGRES_DB`         | Nom de la base créée au premier démarrage.                                                    | Pas un secret : garder `stoguard` ou choisir un autre nom.                              |
 | `DATABASE_URL`        | URL de connexion utilisée par l'application et par Prisma.                                    | À reconstruire à la main à partir des trois valeurs ci-dessus (voir plus bas).          |
 | `SESSION_SECRET`      | Clé utilisée pour signer les cookies de session.                                              | À générer aléatoirement, voir commande ci-dessous.                                      |
-| `AUTH_PASSWORD_HASH`  | Hash (scrypt) du mot de passe de connexion à l'application.                                   | **Laisser vide pour l'instant**, généré à l'étape suivante. L'application refuse de démarrer tant qu'il est vide. |
+| `AUTH_PASSWORD_HASH`  | Valeur d'**amorçage** seulement (voir section 3) : sert à créer la ligne de configuration en base au tout premier démarrage. Ensuite, la modifier n'a plus aucun effet — le mot de passe se change depuis `/parametres`. | **Laisser vide pour l'instant**, généré à l'étape suivante. L'application refuse de démarrer tant que ni la base ni cette variable ne portent de hash. |
 | `TZ`                  | Fuseau horaire du conteneur. Il détermine à quel moment on change de jour, donc le calcul des « jours restants » avant péremption. | Facultatif : `Europe/Paris` par défaut. Ne changer que si vous n'êtes pas en France métropolitaine. |
 | `OFF_CONTACT_EMAIL`   | Adresse de contact envoyée à Open Food Facts dans le User-Agent (`Stoguard/0.1 (<cette adresse>)`), pour qu'ils puissent joindre l'auteur en cas d'usage anormal. | Facultatif : `contact@example.com` par défaut si absent (juste un avertissement dans les logs, l'application démarre quand même). La valeur d'exemple fonctionne, mais il est correct d'y mettre une vraie adresse. |
 
@@ -79,8 +79,9 @@ déploiement a le sien.
 ## 3. Générer le mot de passe de connexion
 
 L'application n'a pas de compte ni d'inscription : un seul mot de passe,
-partagé, protège tout le site. Sans `AUTH_PASSWORD_HASH` renseigné dans
-`.env`, elle refuse de démarrer plutôt que de tourner sans protection.
+partagé, protège tout le site. Sans hash disponible ni en base ni via
+`AUTH_PASSWORD_HASH`, elle refuse de démarrer plutôt que de tourner sans
+protection.
 
 Construisez d'abord l'image (elle contient le script de hachage) :
 
@@ -99,6 +100,14 @@ docker compose run --rm --entrypoint npm app run auth:hash
 Le mot de passe est saisi en masqué, jamais affiché ni écrit sur disque.
 Collez la valeur affichée (`<sel>:<hash>`) dans `AUTH_PASSWORD_HASH=` de
 `.env`.
+
+**Cette valeur ne sert qu'une fois**, au tout premier démarrage : l'application
+copie alors ce hash dans la table `Configuration` de la base, qui devient la
+seule source de vérité à partir de là. Modifier `AUTH_PASSWORD_HASH` après
+coup — y compris en le vidant — n'a plus aucun effet sur le mot de passe déjà
+en place. Pour changer de mot de passe une fois l'application démarrée,
+utilisez la page **/parametres** (mot de passe actuel requis) : ça déconnecte
+immédiatement toutes les sessions ouvertes, y compris celle en cours.
 
 ## 4. Lancer l'application
 

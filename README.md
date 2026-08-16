@@ -79,19 +79,25 @@ droits.
 par défaut — une nouvelle route est protégée automatiquement, sans rien à
 déclarer. Seuls `/login`, `/health` et les ressources statiques sous `/_app/`
 sont publics. Un visiteur non authentifié est redirigé vers `/login`. Dans le
-même esprit, l'application **refuse de démarrer** si `AUTH_PASSWORD_HASH` ou
-`SESSION_SECRET` est absent, plutôt que de tourner sans protection.
+même esprit, l'application **refuse de démarrer** si `SESSION_SECRET` est
+absent, et refuse de servir quoi que ce soit si aucun hash de mot de passe
+n'est disponible ni en base ni via `AUTH_PASSWORD_HASH` (voir plus bas) —
+plutôt que de tourner sans protection.
 
 **Mot de passe.** Haché avec `scrypt` (`node:crypto`, sans dépendance), aux
-paramètres recommandés par l'OWASP. Le hash — jamais le mot de passe — est
-stocké dans `AUTH_PASSWORD_HASH`, généré une fois avec `npm run auth:hash`
-(voir plus bas).
+paramètres recommandés par l'OWASP. Le hash — jamais le mot de passe — vit
+dans la table `Configuration` (une seule ligne), amorcée une fois au premier
+démarrage depuis `AUTH_PASSWORD_HASH` (généré avec `npm run auth:hash`, voir
+plus bas) : au-delà, cette variable n'a plus aucun effet, le mot de passe se
+change depuis `/parametres`.
 
 **Session.** Un cookie signé en HMAC-SHA256 avec `SESSION_SECRET`, sans table
-en base : le serveur vérifie la signature et la date d'expiration, rien de
-plus. Conséquence assumée pour un mono-utilisateur : pas de révocation
-individuelle possible, seulement globale — changer `SESSION_SECRET` invalide
-toutes les sessions d'un coup.
+de jetons à tenir à jour : le serveur vérifie la signature, la date
+d'expiration, et une version de session portée par le jeton et comparée à
+`Configuration.versionSession`. Changer `SESSION_SECRET` (rotation manuelle)
+ou changer de mot de passe depuis `/parametres` (qui incrémente cette
+version) invalident chacun toutes les sessions d'un coup — pas de révocation
+individuelle, seulement globale, assumé pour un mono-utilisateur.
 
 **Anti-force-brute.** `src/lib/server/limiteConnexion.ts` retarde
 progressivement les tentatives successives, par IP, en mémoire. Limite connue
@@ -168,8 +174,10 @@ npm run auth:hash
 ```
 
 Demande le mot de passe en saisie masquée et affiche le hash à coller dans
-`AUTH_PASSWORD_HASH=` de `.env`. L'application refuse de démarrer tant que
-cette variable est vide (voir la section Authentification plus haut).
+`AUTH_PASSWORD_HASH=` de `.env`. Cette valeur n'est utilisée qu'au tout
+premier démarrage, pour amorcer la table `Configuration` en base (voir la
+section Authentification plus haut) ; ensuite le mot de passe se change
+depuis `/parametres`, et modifier cette variable n'a plus d'effet.
 
 ### 5. Lancer l'application
 

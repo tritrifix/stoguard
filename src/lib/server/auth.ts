@@ -44,19 +44,27 @@ function signer(payload: string, secret: string): string {
 	return createHmac('sha256', secret).update(payload).digest('hex');
 }
 
+const FORMAT_PAYLOAD = /^(\d+):(\d+)$/;
+
 /**
- * Jeton de session : "<expiration_ms>.<signature>". La signature porte sur
- * l'expiration elle-même, donc la falsifier pour prolonger une session sans
- * connaître SESSION_SECRET est infaisable.
+ * Jeton de session : "<expiration_ms>:<version>.<signature>". La signature
+ * porte sur l'expiration et la version, donc falsifier l'une ou l'autre
+ * sans connaître SESSION_SECRET est infaisable.
+ *
+ * version vient de Configuration.versionSession : l'inclure dans le jeton
+ * permet de déconnecter toutes les sessions d'un coup (l'incrémenter en
+ * base) sans tenir de liste de jetons révoqués — un changement de mot de
+ * passe suffit, verifierJeton rejette alors tout jeton à l'ancienne version.
  */
-export function creerJeton(expiration: Date, secret: string): string {
-	const payload = String(expiration.getTime());
+export function creerJeton(expiration: Date, secret: string, version: number): string {
+	const payload = `${expiration.getTime()}:${version}`;
 	return `${payload}.${signer(payload, secret)}`;
 }
 
 export function verifierJeton(
 	jeton: string,
 	secret: string,
+	versionAttendue: number,
 	maintenant: Date = new Date()
 ): boolean {
 	const separateur = jeton.indexOf('.');
@@ -71,8 +79,12 @@ export function verifierJeton(
 		return false;
 	}
 
-	const expiration = Number(payload);
-	if (!Number.isFinite(expiration)) return false;
+	const correspondance = FORMAT_PAYLOAD.exec(payload);
+	if (!correspondance) return false;
+
+	const expiration = Number(correspondance[1]);
+	const version = Number(correspondance[2]);
+	if (version !== versionAttendue) return false;
 
 	return maintenant.getTime() < expiration;
 }
