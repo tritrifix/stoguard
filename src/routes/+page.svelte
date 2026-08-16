@@ -35,6 +35,11 @@
 	</div>
 </header>
 
+<nav class="liens-secondaires">
+	<a href="/historique">Historique</a>
+	<a href="/maintenance">Maintenance</a>
+</nav>
+
 <form method="GET" class="filtre">
 	<label for="emplacement">Emplacement</label>
 	<select id="emplacement" name="emplacement" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
@@ -175,6 +180,18 @@
 		font-size: 0.85rem;
 		cursor: pointer;
 		white-space: nowrap;
+	}
+
+	.liens-secondaires {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.liens-secondaires a {
+		color: #57606a;
+		font-size: 0.85rem;
+		text-decoration: underline;
 	}
 
 	.filtre {
