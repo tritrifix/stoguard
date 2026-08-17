@@ -1,12 +1,27 @@
 <script lang="ts">
-	import { libelleEtat } from '$lib/dates';
+	import { aujourdhui, libelleEtat, versChampDate } from '$lib/dates';
 	import type { PageProps } from './$types';
 
-	let { data }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 
 	// Quantité à sortir, saisie par l'utilisateur, uniquement pour les
 	// articles à plus d'une unité (clé = id de l'article). Préremplie à 1.
 	let quantites = $state<Record<string, number>>({});
+
+	// Choix de la date d'ouverture : un seul article à la fois peut avoir son
+	// sélecteur ouvert (id ou null). Le bouton "Ouvrir" ne soumet plus
+	// directement — il révèle ce choix, qui disparaît de la carte dès que
+	// l'ouverture est confirmée (ligne.estOuvert passe à true) ou annulée.
+	let articleEnOuverture = $state<string | null>(null);
+	let modeDate = $state<'aujourdhui' | 'autre'>('aujourdhui');
+	let dateChoisie = $state('');
+	const dateDuJour = versChampDate(aujourdhui());
+
+	function commencerOuverture(id: string) {
+		articleEnOuverture = id;
+		modeDate = 'aujourdhui';
+		dateChoisie = dateDuJour;
+	}
 
 	// timeZone UTC : les dates de péremption sont stockées à minuit UTC comme
 	// jours calendaires. Les formater dans le fuseau local les décalerait.
@@ -99,12 +114,57 @@
 					/>
 				{/if}
 
+				{#if !ligne.estOuvert && articleEnOuverture === ligne.id}
+					<form method="POST" action="?/ouvrir" class="choix-ouverture">
+						<input type="hidden" name="id" value={ligne.id} />
+						<div class="mode-date">
+							<label class="radio-inline">
+								<input
+									type="radio"
+									name={`mode-${ligne.id}`}
+									checked={modeDate === 'aujourdhui'}
+									onchange={() => (modeDate = 'aujourdhui')}
+								/>
+								<span>Aujourd'hui</span>
+							</label>
+							<label class="radio-inline">
+								<input
+									type="radio"
+									name={`mode-${ligne.id}`}
+									checked={modeDate === 'autre'}
+									onchange={() => (modeDate = 'autre')}
+								/>
+								<span>Autre date</span>
+							</label>
+						</div>
+						{#if modeDate === 'autre'}
+							<input
+								type="date"
+								name="dateOuverture"
+								class="date-ouverture-input"
+								max={dateDuJour}
+								value={dateChoisie}
+								oninput={(e) => (dateChoisie = e.currentTarget.value)}
+								required
+							/>
+						{/if}
+						{#if form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
+						<div class="choix-ouverture-actions">
+							<button type="submit">Confirmer l'ouverture</button>
+							<button type="button" onclick={() => (articleEnOuverture = null)}>
+								Annuler
+							</button>
+						</div>
+					</form>
+				{/if}
+
 				<div class="actions">
 					{#if !ligne.estOuvert}
-						<form method="POST" action="?/ouvrir">
-							<input type="hidden" name="id" value={ligne.id} />
-							<button type="submit">Ouvrir</button>
-						</form>
+						{#if articleEnOuverture !== ligne.id}
+							<button type="button" onclick={() => commencerOuverture(ligne.id)}>
+								Ouvrir
+							</button>
+						{/if}
 					{:else}
 						<form method="POST" action="?/annulerOuverture">
 							<input type="hidden" name="id" value={ligne.id} />
@@ -319,6 +379,76 @@
 		width: 100%;
 		box-sizing: border-box;
 		margin-bottom: 0.6rem;
+	}
+
+	.choix-ouverture {
+		background: #f6f8fa;
+		border: 1px solid #d0d7de;
+		border-radius: 8px;
+		padding: 0.6rem 0.75rem;
+		margin-bottom: 0.6rem;
+	}
+
+	.mode-date {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1rem;
+	}
+
+	.radio-inline {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.88rem;
+	}
+
+	.radio-inline input {
+		width: 1.1rem;
+		height: 1.1rem;
+		margin: 0;
+		flex-shrink: 0;
+	}
+
+	.date-ouverture-input {
+		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
+		font-size: 16px;
+		padding: 0.5rem;
+		border: 1px solid #d0d7de;
+		border-radius: 8px;
+		background: #fff;
+		width: 100%;
+		box-sizing: border-box;
+		margin-top: 0.5rem;
+	}
+
+	.choix-ouverture-actions {
+		display: flex;
+		gap: 0.4rem;
+		margin-top: 0.6rem;
+	}
+
+	.choix-ouverture-actions button {
+		min-height: 40px;
+		padding: 0 0.75rem;
+		font-size: 0.85rem;
+		border: 1px solid #d0d7de;
+		border-radius: 8px;
+		background: #fff;
+		color: #24292f;
+		cursor: pointer;
+	}
+
+	.choix-ouverture-actions button[type='submit'] {
+		background: #1f6feb;
+		border-color: #1f6feb;
+		color: #fff;
+		font-weight: 600;
+	}
+
+	.erreur {
+		color: #cf222e;
+		font-size: 0.82rem;
+		margin: 0.5rem 0 0;
 	}
 
 	.badge {

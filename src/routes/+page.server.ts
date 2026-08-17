@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { Prisma } from '../../generated/prisma/client.ts';
 import { prisma } from '$lib/server/db';
-import { aujourdhui, dateEffective, etatArticle, joursRestants, severite } from '$lib/dates';
+import { aujourdhui, dateEffective, etatArticle, joursRestants, parseJour, severite } from '$lib/dates';
 import { calculerSortiePartielle } from '$lib/quantite';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -117,6 +117,7 @@ export const actions: Actions = {
 	ouvrir: async ({ request }) => {
 		const donnees = await request.formData();
 		const id = String(donnees.get('id') ?? '');
+		const dateSaisie = String(donnees.get('dateOuverture') ?? '').trim();
 
 		const article = await prisma.articleStock.findUnique({
 			where: { id },
@@ -130,11 +131,29 @@ export const actions: Actions = {
 			return { succes: true };
 		}
 
+		// dateOuverture est un jour calendaire ancré à minuit UTC, pas un
+		// instant (voir parseJour/aujourdhui dans $lib/dates.ts) : jamais une
+		// date construite en heure locale, ça rouvrirait le décalage d'un jour
+		// déjà corrigé ailleurs dans l'app.
+		const aujourdhuiUtc = aujourdhui();
+		let dateOuverture = aujourdhuiUtc;
+
+		if (dateSaisie !== '') {
+			const parsee = parseJour(dateSaisie);
+			if (parsee === null) {
+				return fail(400, { erreur: "Date d'ouverture invalide." });
+			}
+			if (parsee.getTime() > aujourdhuiUtc.getTime()) {
+				return fail(400, {
+					erreur: "La date d'ouverture ne peut pas être postérieure à aujourd'hui."
+				});
+			}
+			dateOuverture = parsee;
+		}
+
 		await prisma.articleStock.update({
 			where: { id },
-			// dateOuverture est un jour calendaire, pas un instant : même
-			// convention que les dates saisies au formulaire.
-			data: { estOuvert: true, dateOuverture: aujourdhui() }
+			data: { estOuvert: true, dateOuverture }
 		});
 
 		return { succes: true };
