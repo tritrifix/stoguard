@@ -140,6 +140,30 @@ export const actions: Actions = {
 		return { succes: true };
 	},
 
+	annulerOuverture: async ({ request }) => {
+		const donnees = await request.formData();
+		const id = String(donnees.get('id') ?? '');
+
+		const article = await prisma.articleStock.findUnique({
+			where: { id },
+			select: { estOuvert: true, dateSortie: true }
+		});
+
+		if (!article || article.dateSortie !== null) {
+			return fail(404, { erreur: "Cet article n'est plus en stock." });
+		}
+		if (!article.estOuvert) {
+			return { succes: true };
+		}
+
+		await prisma.articleStock.update({
+			where: { id },
+			data: { estOuvert: false, dateOuverture: null }
+		});
+
+		return { succes: true };
+	},
+
 	consommer: async ({ request }) => {
 		const donnees = await request.formData();
 		const echec = await sortirDuStock(

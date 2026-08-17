@@ -105,6 +105,11 @@
 							<input type="hidden" name="id" value={ligne.id} />
 							<button type="submit">Ouvrir</button>
 						</form>
+					{:else}
+						<form method="POST" action="?/annulerOuverture">
+							<input type="hidden" name="id" value={ligne.id} />
+							<button type="submit">Annuler l'ouverture (erreur)</button>
+						</form>
 					{/if}
 					<form method="POST" action="?/consommer">
 						<input type="hidden" name="id" value={ligne.id} />
