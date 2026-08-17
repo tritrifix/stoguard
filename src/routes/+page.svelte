@@ -84,6 +84,7 @@
 				<div class="entete">
 					<span class="nom">{ligne.nom}</span>
 					{#if ligne.estOuvert}<span class="ouvert">Ouvert</span>{/if}
+					<a class="modifier" href="/article/{ligne.id}/modifier">Modifier</a>
 				</div>
 
 				<p class="meta">
@@ -329,6 +330,13 @@
 		align-items: baseline;
 		gap: 0.5rem;
 		flex-wrap: wrap;
+	}
+
+	.modifier {
+		margin-left: auto;
+		font-size: 0.8rem;
+		color: #57606a;
+		text-decoration: underline;
 	}
 
 	.nom {
