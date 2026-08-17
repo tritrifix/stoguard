@@ -41,6 +41,15 @@
 			const codes = await detecteur.detect(videoEl);
 			if (codes.length > 0 && !demonte) {
 				const ean = codes[0].rawValue;
+
+				// Rien n'indiquait sinon qu'un code venait d'être détecté avant
+				// la redirection : vibration si le navigateur la permet, et
+				// image de la caméra gelée un court instant en confirmation
+				// visuelle avant de couper le flux.
+				if ('vibrate' in navigator) navigator.vibrate(100);
+				videoEl.pause();
+				await new Promise((resolve) => setTimeout(resolve, 400));
+
 				arreterFlux();
 				await goto(`/ajouter?ean=${encodeURIComponent(ean)}`);
 			}
