@@ -110,6 +110,24 @@ la section « À propos de Caddy et du HTTPS » dans
 fail-closed CSRF et l'anti-force-brute cessent tous les deux de fonctionner
 correctement.
 
+## Application installable et notifications
+
+Manifeste, icônes et service worker (`src/service-worker.ts`) : installable
+sur l'écran d'accueil, démarrage rapide grâce à une coquille applicative
+(JS/CSS/icônes) mise en cache. **Les pages elles-mêmes ne sont jamais mises
+en cache** — ni `/login`, ni aucune page affichant du stock — volontairement :
+une liste de péremption périmée servie hors-ligne serait pire qu'une absence
+de liste.
+
+Notifications push facultatives (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/
+`VAPID_SUBJECT`, voir [DEPLOY.md](DEPLOY.md)) : un déclencheur quotidien,
+géré par un simple `setInterval` dans le conteneur `app` (pas de cron
+système), regroupe en une seule notification les produits périmés ou à
+consommer sous 3 jours. Activable depuis `/parametres`. La dépendance
+`web-push` est la seule exception à la règle du zéro dépendance de ce
+projet — nécessaire pour signer et chiffrer les messages Push selon la
+norme, en JS pur (aucun binaire natif, vérifié).
+
 ## Prérequis
 
 - **Node.js 24** (voir `.nvmrc` ; le projet refuse les autres versions

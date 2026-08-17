@@ -36,6 +36,12 @@ services:
       # contrairement à AUTH_PASSWORD_HASH, une valeur absente ne bloque pas
       # le démarrage, juste un avertissement dans les logs au lancement.
       OFF_CONTACT_EMAIL: ${OFF_CONTACT_EMAIL:-contact@example.com}
+      # Notifications de péremption : facultatives, comme OFF_CONTACT_EMAIL
+      # ci-dessus — absentes, l'app démarre quand même mais le planificateur
+      # ne fait jamais rien (voir src/lib/server/notificationsPush.ts).
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     expose:
       - "3000"
     depends_on:

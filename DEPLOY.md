@@ -46,6 +46,8 @@ Puis éditer `.env` et renseigner chaque variable :
 | `AUTH_PASSWORD_HASH`  | Valeur d'**amorçage** seulement (voir section 3) : sert à créer la ligne de configuration en base au tout premier démarrage. Ensuite, la modifier n'a plus aucun effet — le mot de passe se change depuis `/parametres`. | **Laisser vide pour l'instant**, généré à l'étape suivante. L'application refuse de démarrer tant que ni la base ni cette variable ne portent de hash. |
 | `TZ`                  | Fuseau horaire du conteneur. Il détermine à quel moment on change de jour, donc le calcul des « jours restants » avant péremption. | Facultatif : `Europe/Paris` par défaut. Ne changer que si vous n'êtes pas en France métropolitaine. |
 | `OFF_CONTACT_EMAIL`   | Adresse de contact envoyée à Open Food Facts dans le User-Agent (`Stoguard/0.1 (<cette adresse>)`), pour qu'ils puissent joindre l'auteur en cas d'usage anormal. | Facultatif : `contact@example.com` par défaut si absent (juste un avertissement dans les logs, l'application démarre quand même). La valeur d'exemple fonctionne, mais il est correct d'y mettre une vraie adresse. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Identité du serveur pour les notifications push de péremption. | Facultatif : `npm run vapid:generate` (voir section 3bis). Sans elles, l'application démarre normalement mais n'envoie jamais rien. |
+| `VAPID_SUBJECT`       | Contact (`mailto:` ou `https:`) que les services de notification (navigateurs, FCM...) peuvent utiliser pour vous joindre en cas de souci. | Facultatif, non généré : à choisir vous-même, par exemple `mailto:vous@exemple.fr`. |
 
 Générer un secret aléatoire (utilisable pour `POSTGRES_PASSWORD` comme pour
 `SESSION_SECRET`) :
@@ -71,6 +73,10 @@ SESSION_SECRET=<autre valeur générée avec openssl rand -hex 32>
 AUTH_PASSWORD_HASH=
 
 OFF_CONTACT_EMAIL=contact@example.com
+
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:vous@exemple.fr
 ```
 
 `.env` n'est jamais commité (il est dans `.gitignore`) : chaque machine de
@@ -108,6 +114,21 @@ coup — y compris en le vidant — n'a plus aucun effet sur le mot de passe dé
 en place. Pour changer de mot de passe une fois l'application démarrée,
 utilisez la page **/parametres** (mot de passe actuel requis) : ça déconnecte
 immédiatement toutes les sessions ouvertes, y compris celle en cours.
+
+## 3bis. Activer les notifications de péremption (facultatif)
+
+Sans les trois variables `VAPID_*`, l'application fonctionne normalement,
+simplement sans jamais envoyer de notification. Pour les activer :
+
+```sh
+docker compose run --rm --entrypoint npm app run vapid:generate
+```
+
+Collez `VAPID_PUBLIC_KEY` et `VAPID_PRIVATE_KEY` dans `.env`, et renseignez
+`VAPID_SUBJECT` vous-même (`mailto:vous@exemple.fr` ou une URL `https:`).
+Redémarrez ensuite l'application (`docker compose up -d`) pour qu'elle les
+prenne en compte. L'activation côté navigateur se fait depuis
+`/parametres`, une fois connecté.
 
 ## 4. Lancer l'application
 

@@ -2,6 +2,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { prisma } from '$lib/server/db';
 import { verifierJeton } from '$lib/server/auth';
+import { demarrerPlanificateurNotifications } from '$lib/server/notificationsPush';
 
 if (!env.SESSION_SECRET) {
 	throw new Error('SESSION_SECRET n\'est pas défini dans .env.');
@@ -12,6 +13,14 @@ if (!env.SESSION_SECRET) {
 if (!env.OFF_CONTACT_EMAIL) {
 	console.warn(
 		"OFF_CONTACT_EMAIL n'est pas défini : Open Food Facts recevra un User-Agent avec une adresse de contact générique. Renseignez cette variable dans .env."
+	);
+}
+// Notifications de péremption facultatives : sans ces trois variables,
+// notificationsPush.ts reste silencieux à chaque vérification plutôt que de
+// bloquer quoi que ce soit.
+if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) {
+	console.warn(
+		"VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY ou VAPID_SUBJECT absent : les notifications de péremption resteront désactivées. Générez les clés avec `npm run vapid:generate`."
 	);
 }
 
@@ -50,6 +59,8 @@ async function amorcerConfiguration() {
 // l'exécution, pas inlinée au build — sinon "docker compose build", où la
 // variable n'est pas encore définie, casserait.
 await amorcerConfiguration();
+
+demarrerPlanificateurNotifications();
 
 const COOKIE_SESSION = 'session';
 

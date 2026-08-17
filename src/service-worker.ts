@@ -67,3 +67,42 @@ sw.addEventListener('fetch', (event) => {
 		})()
 	);
 });
+
+// Le serveur n'envoie que { titre, corps } (voir construireMessageNotification
+// dans $lib/notifications.ts) : le payload n'est jamais du JSON arbitraire.
+sw.addEventListener('push', (event) => {
+	if (!event.data) return;
+
+	let message: { titre?: string; corps?: string };
+	try {
+		message = event.data.json();
+	} catch {
+		return;
+	}
+
+	event.waitUntil(
+		sw.registration.showNotification(message.titre ?? 'Stoguard', {
+			body: message.corps ?? '',
+			icon: '/icons/icon-192.png',
+			badge: '/icons/icon-192.png'
+		})
+	);
+});
+
+// Ramène au premier onglet déjà ouvert plutôt que d'en empiler un nouveau,
+// ou en ouvre un si aucun n'est disponible.
+sw.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+
+	event.waitUntil(
+		(async () => {
+			const clientsExistants = await sw.clients.matchAll({ type: 'window' });
+			const existant = clientsExistants.find((c) => 'focus' in c);
+			if (existant) {
+				await (existant as WindowClient).focus();
+				return;
+			}
+			await sw.clients.openWindow('/');
+		})()
+	);
+});

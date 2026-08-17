@@ -131,5 +131,25 @@ model Configuration {
   // d'un coup, y compris celle qui vient de faire le changement.
   versionSession Int @default(1)
 
+  // Heure locale (0-23, fuseau TZ du conteneur) du déclencheur quotidien de
+  // notifications de péremption. Paramétrable depuis /parametres.
+  heureNotification Int @default(9)
+  // Horodatage du dernier envoi réussi, en base plutôt qu'en mémoire pour
+  // survivre à un redémarrage du conteneur sans renvoyer une deuxième
+  // notification le même jour (voir src/lib/server/notifications.ts).
+  derniereNotificationEnvoyee DateTime?
+
   dateMaj DateTime @updatedAt
+}
+
+// Un abonnement Push par navigateur/appareil ayant activé les
+// notifications. Mono-utilisateur, mais plusieurs appareils possibles (le
+// téléphone ET l'ordinateur, par exemple) : pas de userId, juste la liste.
+model AbonnementPush {
+  id       String @id @default(uuid())
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  dateCreation DateTime @default(now())
 }

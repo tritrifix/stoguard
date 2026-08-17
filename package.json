@@ -13,6 +13,7 @@
 		"start": "node build/index.js",
 		"db:seed": "prisma db seed",
 		"auth:hash": "node scripts/hash-password.ts",
+		"vapid:generate": "node scripts/generate-vapid-keys.ts",
 		"test": "node --test",
 		"postinstall": "prisma generate",
 		"prepare": "svelte-kit sync || echo ''",
@@ -23,6 +24,7 @@
 		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@types/web-push": "^3.6.4",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",
@@ -31,6 +33,7 @@
 	"dependencies": {
 		"@prisma/adapter-pg": "^7.9.1",
 		"@prisma/client": "^7.9.1",
-		"prisma": "^7.9.1"
+		"prisma": "^7.9.1",
+		"web-push": "^3.6.7"
 	}
 }
