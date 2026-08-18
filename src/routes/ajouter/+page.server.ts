@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 import { prisma } from '$lib/server/db';
 import { parseJour } from '$lib/dates';
 import { recupererProduitOpenFoodFacts, type ProduitOpenFoodFacts } from '$lib/server/openfoodfacts';
+import { categorieAMettreAJour } from '$lib/produit';
 import { validerChampsArticle } from '$lib/server/validationArticle';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -21,7 +22,9 @@ const FRAICHEUR_CACHE_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
  * plus jamais, sans quoi le rafraîchissement automatique écraserait
  * silencieusement la correction au scan suivant.
  */
-async function obtenirProduitParEan(ean: string): Promise<ProduitOpenFoodFacts | null> {
+type PrefillAjout = ProduitOpenFoodFacts & { categorieId: string | null };
+
+async function obtenirProduitParEan(ean: string): Promise<PrefillAjout | null> {
 	const existant = await prisma.produit.findUnique({ where: { ean } });
 
 	const frais =
@@ -34,7 +37,8 @@ async function obtenirProduitParEan(ean: string): Promise<ProduitOpenFoodFacts |
 			nom: existant.nom,
 			marque: existant.marque,
 			contenance: existant.contenance,
-			imageUrl: existant.imageUrl
+			imageUrl: existant.imageUrl,
+			categorieId: existant.categorieId
 		};
 	}
 
@@ -46,10 +50,14 @@ async function obtenirProduitParEan(ean: string): Promise<ProduitOpenFoodFacts |
 			nom: existant.nom,
 			marque: existant.marque,
 			contenance: existant.contenance,
-			imageUrl: existant.imageUrl
+			imageUrl: existant.imageUrl,
+			categorieId: existant.categorieId
 		};
 	}
 
+	// donnees (Open Food Facts) ne contient jamais categorieId : OFF n'a pas
+	// d'avis sur nos catégories locales, et la catégorie ne doit changer que
+	// par un choix humain, jamais par ce rafraîchissement de cache.
 	const produit = await prisma.produit.upsert({
 		where: { ean },
 		create: { ean, saisiManuelle: false, dateMajCache: new Date(), ...donnees },
@@ -60,7 +68,8 @@ async function obtenirProduitParEan(ean: string): Promise<ProduitOpenFoodFacts |
 		nom: produit.nom,
 		marque: produit.marque,
 		contenance: produit.contenance,
-		imageUrl: produit.imageUrl
+		imageUrl: produit.imageUrl,
+		categorieId: produit.categorieId
 	};
 }
 
@@ -121,6 +130,7 @@ export const actions: Actions = {
 		}
 
 		const eanSaisi = saisie.ean || null;
+		const categorieChoisie = saisie.categorieId || null;
 
 		// Un même produit peut avoir plusieurs exemplaires en stock : on réutilise
 		// la fiche produit existante plutôt que d'en créer une par exemplaire.
@@ -130,21 +140,41 @@ export const actions: Actions = {
 		// modifier le nom préempli) et créer une deuxième fiche avec le même EAN
 		// violerait sa contrainte d'unicité.
 		const existant =
-			(eanSaisi ? await prisma.produit.findUnique({ where: { ean: eanSaisi }, select: { id: true } }) : null) ??
+			(eanSaisi
+				? await prisma.produit.findUnique({ where: { ean: eanSaisi }, select: { id: true, categorieId: true } })
+				: null) ??
 			(await prisma.produit.findFirst({
 				where: { nom: { equals: saisie.nom, mode: 'insensitive' } },
-				select: { id: true }
+				select: { id: true, categorieId: true }
 			}));
 
-		const produitId =
-			existant?.id ??
-			(
-				await prisma.produit.create({
+		// Création du produit, mise à jour de sa catégorie et création de
+		// l'exemplaire dans une seule transaction : sinon on peut se retrouver
+		// avec un article créé mais un produit non mis à jour (ou l'inverse)
+		// en cas d'erreur en cours de route.
+		await prisma.$transaction(async (tx) => {
+			let produitId: string;
+
+			if (existant) {
+				produitId = existant.id;
+				// La catégorie choisie ici peut corriger celle déjà en fiche (mal
+				// choisie au premier scan, par exemple) : la correction profite
+				// alors à tous les futurs scans du même produit, pas seulement à
+				// cet exemplaire.
+				const nouvelleCategorie = categorieAMettreAJour(existant.categorieId, categorieChoisie);
+				if (nouvelleCategorie !== undefined) {
+					await tx.produit.update({
+						where: { id: existant.id },
+						data: { categorieId: nouvelleCategorie }
+					});
+				}
+			} else {
+				const nouveauProduit = await tx.produit.create({
 					data: {
 						nom: saisie.nom,
 						marque: saisie.marque || null,
 						contenance: saisie.contenance || null,
-						categorieId: saisie.categorieId || null,
+						categorieId: categorieChoisie,
 						// Cette branche ne s'atteint que si aucune fiche n'existait déjà
 						// pour cet EAN ou ce nom : la saisie reste manuelle même quand un
 						// EAN a été scanné mais qu'Open Food Facts ne le connaissait pas.
@@ -152,20 +182,22 @@ export const actions: Actions = {
 						ean: eanSaisi
 					},
 					select: { id: true }
-				})
-			).id;
-
-		await prisma.articleStock.create({
-			data: {
-				produitId,
-				emplacementId: saisie.emplacementId,
-				quantite: resultat.quantite,
-				dateImprimee: resultat.dateImprimee,
-				typeDate: resultat.typeDate,
-				estOuvert: saisie.dejaOuvert,
-				dateOuverture,
-				delaiOuverture: resultat.delaiOuverture
+				});
+				produitId = nouveauProduit.id;
 			}
+
+			await tx.articleStock.create({
+				data: {
+					produitId,
+					emplacementId: saisie.emplacementId,
+					quantite: resultat.quantite,
+					dateImprimee: resultat.dateImprimee,
+					typeDate: resultat.typeDate,
+					estOuvert: saisie.dejaOuvert,
+					dateOuverture,
+					delaiOuverture: resultat.delaiOuverture
+				}
+			});
 		});
 
 		redirect(303, '/');

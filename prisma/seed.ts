@@ -46,6 +46,30 @@ for (const emplacement of emplacements) {
 	});
 }
 
+// Correction ponctuelle de deux fiches produit réelles restées sans
+// catégorie à cause du bug de persistance corrigé dans /ajouter (la
+// catégorie choisie au formulaire n'était jamais reportée sur une fiche
+// Produit déjà existante). Ne touche que les fiches encore sans catégorie :
+// relancer le seed n'écrase jamais une correction faite depuis via
+// /article/[id]/modifier.
+const correctionsCategories = [
+	{ ean: '3017620422003', categorieNom: 'Confitures' }, // Nutella
+	{ ean: '5449000000996', categorieNom: 'Jus et boissons ouvertes' } // Coca-Cola 33cl
+];
+
+for (const { ean, categorieNom } of correctionsCategories) {
+	const categorie = await prisma.categorie.findUnique({ where: { nom: categorieNom } });
+	if (!categorie) continue;
+
+	const { count } = await prisma.produit.updateMany({
+		where: { ean, categorieId: null },
+		data: { categorieId: categorie.id }
+	});
+	if (count > 0) {
+		console.log(`Catégorie « ${categorieNom} » appliquée à l'EAN ${ean}.`);
+	}
+}
+
 console.log(
 	`Seed terminé : ${categories.length} catégories, ${emplacements.length} emplacements.`
 );

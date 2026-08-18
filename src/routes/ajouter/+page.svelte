@@ -24,7 +24,9 @@
 	// pour afficher le délai qu'elle apporterait à côté du champ de
 	// surcharge, y compris juste après un envoi refusé.
 	let categorieChoisie = $state<string | null>(null);
-	const categorieId = $derived(categorieChoisie ?? saisie?.categorieId ?? '');
+	const categorieId = $derived(
+		categorieChoisie ?? saisie?.categorieId ?? data.prefill?.categorieId ?? ''
+	);
 	const categorieSelectionnee = $derived(data.categories.find((c) => c.id === categorieId));
 
 	const dateDuJour = versChampDate(aujourdhui());
