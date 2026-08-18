@@ -5,13 +5,30 @@ import type { Actions, PageServerLoad } from './$types';
 const CONFIRMATION_ATTENDUE = 'SUPPRIMER';
 
 export const load: PageServerLoad = async () => {
-	const [totalConsommations, articlesSortis, totalArticles] = await Promise.all([
+	const [totalConsommations, articlesSortis, totalArticles, articlesSansDelai] = await Promise.all([
 		prisma.consommation.count(),
 		prisma.articleStock.count({ where: { dateSortie: { not: null } } }),
-		prisma.articleStock.count()
+		prisma.articleStock.count(),
+		// Purement informatif : repère les articles encore en stock dont la
+		// catégorie (ou son absence) ne fournit aucun délai après ouverture,
+		// pour aider à repérer les fiches mal catégorisées sans avoir à les
+		// chercher une par une.
+		prisma.articleStock.findMany({
+			where: {
+				dateSortie: null,
+				produit: {
+					OR: [{ categorieId: null }, { categorie: { delaiApresOuverture: null } }]
+				}
+			},
+			select: {
+				id: true,
+				produit: { select: { nom: true, marque: true, categorie: { select: { nom: true } } } }
+			},
+			orderBy: { produit: { nom: 'asc' } }
+		})
 	]);
 
-	return { totalConsommations, articlesSortis, totalArticles };
+	return { totalConsommations, articlesSortis, totalArticles, articlesSansDelai };
 };
 
 function verifierConfirmation(donnees: FormData): boolean {

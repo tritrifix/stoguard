@@ -40,6 +40,34 @@
 	</p>
 {/if}
 
+<section class="rapport">
+	<h2>Articles sans délai après ouverture</h2>
+	<p>
+		Ces articles encore en stock ont une catégorie sans délai après ouverture
+		configuré (ou aucune catégorie du tout) : s'ils sont ouverts un jour, leur
+		date effective ne sera jamais plafonnée. Purement informatif — corrigez
+		la catégorie qui convient sur la fiche de l'article, si besoin.
+	</p>
+
+	{#if data.articlesSansDelai.length === 0}
+		<p class="nombre ok">Aucun article concerné.</p>
+	{:else}
+		<ul class="liste-rapport">
+			{#each data.articlesSansDelai as article (article.id)}
+				<li>
+					<a href="/article/{article.id}/modifier">
+						{article.produit.nom}{#if article.produit.marque}
+							<span class="marque"> — {article.produit.marque}</span>{/if}
+					</a>
+					<span class="categorie">
+						{article.produit.categorie ? article.produit.categorie.nom : 'Sans catégorie'}
+					</span>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</section>
+
 <section class="purge">
 	<h2>Vider l'historique</h2>
 	<p>
@@ -153,6 +181,7 @@
 		margin: 0 0 1.25rem;
 	}
 
+	.rapport,
 	.purge {
 		border: 1px solid #d0d7de;
 		border-radius: 10px;
@@ -161,9 +190,59 @@
 		background: #fff;
 	}
 
+	.rapport h2,
 	.purge h2 {
 		font-size: 1.05rem;
 		margin: 0 0 0.5rem;
+	}
+
+	.rapport p {
+		margin: 0 0 0.5rem;
+		font-size: 0.88rem;
+		color: #57606a;
+		line-height: 1.5;
+	}
+
+	.nombre.ok {
+		font-weight: 600;
+		color: #1a7f37 !important;
+	}
+
+	.liste-rapport {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.liste-rapport li {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 0.75rem;
+		padding: 0.5rem 0;
+		border-top: 1px solid #eaeef2;
+		font-size: 0.9rem;
+	}
+
+	.liste-rapport li:first-child {
+		border-top: none;
+	}
+
+	.liste-rapport a {
+		color: #1f6feb;
+		text-decoration: none;
+		font-weight: 600;
+	}
+
+	.liste-rapport .marque {
+		color: #57606a;
+		font-weight: 400;
+	}
+
+	.liste-rapport .categorie {
+		color: #57606a;
+		font-size: 0.82rem;
+		white-space: nowrap;
 	}
 
 	.purge p {
