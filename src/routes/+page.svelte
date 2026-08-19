@@ -8,6 +8,11 @@
 	// articles à plus d'une unité (clé = id de l'article). Préremplie à 1.
 	let quantites = $state<Record<string, number>>({});
 
+	// Vignettes dont l'image a échoué à charger (produit retiré d'Open Food
+	// Facts, URL périmée...) : bascule sur le même placeholder neutre que
+	// l'absence d'image plutôt que l'icône d'image cassée du navigateur.
+	let erreursImage = $state<Record<string, boolean>>({});
+
 	// Choix de la date d'ouverture : un seul article à la fois peut avoir son
 	// sélecteur ouvert (id ou null). Le bouton "Ouvrir" ne soumet plus
 	// directement — il révèle ce choix, qui disparaît de la carte dès que
@@ -81,23 +86,38 @@
 	<ul class="stock">
 		{#each data.lignes as ligne (ligne.id)}
 			<li class="carte sev-{ligne.severite}">
-				<div class="entete">
-					<span class="nom">{ligne.nom}</span>
-					{#if ligne.estOuvert}<span class="ouvert">Ouvert</span>{/if}
-					<a class="modifier" href="/article/{ligne.id}/modifier">Modifier</a>
+				<div class="ligne-haut">
+					{#if ligne.imageUrl && !erreursImage[ligne.id]}
+						<img
+							class="vignette"
+							src={ligne.imageUrl}
+							alt=""
+							loading="lazy"
+							onerror={() => (erreursImage[ligne.id] = true)}
+						/>
+					{:else}
+						<div class="vignette vignette-vide" aria-hidden="true"></div>
+					{/if}
+					<div class="infos">
+						<div class="entete">
+							<span class="nom">{ligne.nom}</span>
+							{#if ligne.estOuvert}<span class="ouvert">Ouvert</span>{/if}
+							<a class="modifier" href="/article/{ligne.id}/modifier">Modifier</a>
+						</div>
+
+						<p class="meta">
+							{#if ligne.marque}{ligne.marque} · {/if}{ligne.emplacement} · ×{formatQuantite(
+								ligne.quantite
+							)}{#if ligne.contenance} · {ligne.contenance}{/if}
+						</p>
+
+						<p class="echeance">
+							<span class="badge">{ligne.typeDate}</span>
+							{formatDate.format(ligne.dateEffective)}
+							<span class="etat">{libelleEtat(ligne.etat, ligne.typeDate, ligne.jours)}</span>
+						</p>
+					</div>
 				</div>
-
-				<p class="meta">
-					{#if ligne.marque}{ligne.marque} · {/if}{ligne.emplacement} · ×{formatQuantite(
-						ligne.quantite
-					)}{#if ligne.contenance} · {ligne.contenance}{/if}
-				</p>
-
-				<p class="echeance">
-					<span class="badge">{ligne.typeDate}</span>
-					{formatDate.format(ligne.dateEffective)}
-					<span class="etat">{libelleEtat(ligne.etat, ligne.typeDate, ligne.jours)}</span>
-				</p>
 
 				{#if ligne.quantite > 1}
 					<label class="quantite-label" for={`qte-${ligne.id}`}>
@@ -323,6 +343,33 @@
 	}
 	.sev-ok {
 		--couleur: #1a7f37;
+	}
+
+	.ligne-haut {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
+	}
+
+	.vignette {
+		width: 44px;
+		height: 44px;
+		flex-shrink: 0;
+		border-radius: 6px;
+		object-fit: contain;
+		background: #f6f8fa;
+		border: 1px solid #eaeef2;
+	}
+
+	.vignette-vide {
+		background: #eaeef2;
+	}
+
+	.infos {
+		/* Sans ça, le texte ne rétrécit pas sous sa largeur naturelle et pousse
+		   la vignette hors de la carte au lieu de tronquer/passer à la ligne. */
+		min-width: 0;
+		flex: 1;
 	}
 
 	.entete {
