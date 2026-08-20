@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			id: c.id,
 			nom: c.articleStock.produit.nom,
 			marque: c.articleStock.produit.marque,
+			imageUrl: c.articleStock.produit.imageUrl,
 			// Decimal Prisma -> nombre simple, sérialisable vers le client.
 			quantite: Number(c.quantite),
 			date: c.date,

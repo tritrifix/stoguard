@@ -1,19 +1,38 @@
 <script lang="ts">
+	import EnteteEcran from '$lib/components/EnteteEcran.svelte';
+	import Vignette from '$lib/components/Vignette.svelte';
+	import { grouperParJour } from '$lib/historique';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 
-	// Date + heure : Consommation.date est un véritable instant (contrairement
-	// à dateImprimee/dateEffective, ancrées à minuit UTC comme jours
-	// calendaires), donc formaté dans le fuseau local du navigateur, sans
-	// forcer UTC.
-	const formatDate = new Intl.DateTimeFormat('fr-FR', {
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric',
+	const groupes = $derived(grouperParJour(data.lignes, new Date()));
+
+	// Heure seule : le jour est déjà porté par l'en-tête du groupe.
+	// Consommation.date est un véritable instant (contrairement à
+	// dateImprimee/dateEffective, ancrées à minuit UTC comme jours
+	// calendaires), donc formaté dans le fuseau local, sans forcer UTC.
+	const formatHeure = new Intl.DateTimeFormat('fr-FR', {
 		hour: '2-digit',
 		minute: '2-digit'
 	});
+
+	const formatJour = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' });
+	const formatJourAnnee = new Intl.DateTimeFormat('fr-FR', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric'
+	});
+
+	const anneeCourante = new Date().getFullYear();
+
+	function libelleJour(groupe: (typeof groupes)[number]): string {
+		if (groupe.relatif === 'aujourdhui') return "Aujourd'hui";
+		if (groupe.relatif === 'hier') return 'Hier';
+		return groupe.jour.getFullYear() === anneeCourante
+			? formatJour.format(groupe.jour)
+			: formatJourAnnee.format(groupe.jour);
+	}
 
 	function formatQuantite(q: number) {
 		return Number.isInteger(q) ? String(q) : q.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
@@ -22,8 +41,25 @@
 	const LIBELLES = {
 		CONSOMME: 'Consommé',
 		JETE_PERIME: 'Jeté (périmé)',
-		JETE_AUTRE: 'Jeté (autre motif)'
+		JETE_AUTRE: 'Jeté (autre)'
 	} as const;
+
+	const SYMBOLES = {
+		CONSOMME: '✓',
+		JETE_PERIME: '⚠',
+		JETE_AUTRE: '✕'
+	} as const;
+
+	const FILTRES = [
+		{ valeur: null, libelle: 'Tous' },
+		{ valeur: 'CONSOMME', libelle: 'Consommé' },
+		{ valeur: 'JETE_PERIME', libelle: 'Jeté (périmé)' },
+		{ valeur: 'JETE_AUTRE', libelle: 'Jeté (autre)' }
+	] as const;
+
+	function lienFiltre(motif: string | null): string {
+		return motif ? `?motif=${motif}` : '?';
+	}
 
 	function pageUrl(page: number): string {
 		const params = new URLSearchParams();
@@ -36,79 +72,84 @@
 
 <svelte:head><title>Historique — Stoguard</title></svelte:head>
 
-<header>
-	<a class="retour" href="/">← Stock</a>
-	<h1>Historique</h1>
-</header>
+<EnteteEcran titre="Historique" libelleRetour="Retour au stock" />
 
-{#if form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
+<div class="stats">
+	<div class="stat">
+		<div class="chiffre consomme">{data.recapitulatif.CONSOMME}</div>
+		<div class="libelle">Consommés</div>
+	</div>
+	<div class="stat">
+		<div class="chiffre perime">{data.recapitulatif.JETE_PERIME}</div>
+		<div class="libelle">Jetés (périmés)</div>
+	</div>
+	<div class="stat">
+		<div class="chiffre autre">{data.recapitulatif.JETE_AUTRE}</div>
+		<div class="libelle">Jetés (autres)</div>
+	</div>
+</div>
 
-<ul class="recap">
-	<li class="recap-item recap-consomme">
-		<span class="recap-nombre">{data.recapitulatif.CONSOMME}</span>
-		<span class="recap-libelle">Consommés</span>
-	</li>
-	<li class="recap-item recap-perime">
-		<span class="recap-nombre">{data.recapitulatif.JETE_PERIME}</span>
-		<span class="recap-libelle">Jetés (périmés)</span>
-	</li>
-	<li class="recap-item recap-autre">
-		<span class="recap-nombre">{data.recapitulatif.JETE_AUTRE}</span>
-		<span class="recap-libelle">Jetés (autres)</span>
-	</li>
-</ul>
+<nav class="filtres" aria-label="Filtrer par motif">
+	{#each FILTRES as filtre (filtre.libelle)}
+		<a
+			href={lienFiltre(filtre.valeur)}
+			class="puce"
+			class:active={data.motifFiltre === filtre.valeur}
+		>
+			{filtre.libelle}
+		</a>
+	{/each}
+</nav>
 
-<form method="GET" class="filtre">
-	<label for="motif">Motif</label>
-	<select id="motif" name="motif" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
-		<option value="" selected={!data.motifFiltre}>Tous</option>
-		<option value="CONSOMME" selected={data.motifFiltre === 'CONSOMME'}>Consommé</option>
-		<option value="JETE_PERIME" selected={data.motifFiltre === 'JETE_PERIME'}>
-			Jeté (périmé)
-		</option>
-		<option value="JETE_AUTRE" selected={data.motifFiltre === 'JETE_AUTRE'}>
-			Jeté (autre motif)
-		</option>
-	</select>
-	<noscript><button type="submit">Filtrer</button></noscript>
-</form>
+{#if form?.erreur}<p class="banniere banniere-danger">{form.erreur}</p>{/if}
 
-{#if data.total === 0}
-	<p class="vide">Aucun historique pour l'instant : les articles consommés ou jetés apparaîtront ici.</p>
-{:else if data.lignes.length === 0}
-	<p class="vide">Aucune ligne pour ce filtre.</p>
+{#if data.lignes.length === 0}
+	<p class="vide">
+		{#if data.motifFiltre}
+			Aucune ligne pour ce motif.
+		{:else}
+			Aucun historique pour l'instant : les articles consommés ou jetés apparaîtront ici.
+		{/if}
+	</p>
 {:else}
-	<ul class="liste">
-		{#each data.lignes as ligne (ligne.id)}
-			<li class="ligne motif-{ligne.motif}">
-				<div class="ligne-principale">
-					<span class="pastille" aria-hidden="true">
-						{#if ligne.motif === 'CONSOMME'}✓{:else if ligne.motif === 'JETE_PERIME'}⚠{:else}✕{/if}
-					</span>
-					<div class="details">
-						<p class="nom">{ligne.nom}{#if ligne.marque}{' · '}{ligne.marque}{/if}</p>
-						<p class="meta">
-							×{formatQuantite(ligne.quantite)} · {formatDate.format(ligne.date)}
-						</p>
+	{#each groupes as groupe (groupe.cle)}
+		<h2 class="jour">{libelleJour(groupe)}</h2>
+		<ul class="lignes">
+			{#each groupe.lignes as ligne (ligne.id)}
+				<li class="carte tuile motif-{ligne.motif}">
+					<div class="haut">
+						<div class="visuel">
+							<Vignette src={ligne.imageUrl} />
+							<span class="pastille" aria-hidden="true">{SYMBOLES[ligne.motif]}</span>
+						</div>
+						<div class="infos">
+							<p class="nom">
+								{ligne.marque ? `${ligne.nom} · ${ligne.marque}` : ligne.nom}
+							</p>
+							<p class="meta">
+								×{formatQuantite(ligne.quantite)} · {formatHeure.format(ligne.date)}
+							</p>
+						</div>
+						<span class="etiquette">{LIBELLES[ligne.motif]}</span>
 					</div>
-					<span class="motif-libelle">{LIBELLES[ligne.motif]}</span>
-				</div>
-				<form method="POST" action="?/restaurer" class="restaurer-form">
-					<input type="hidden" name="id" value={ligne.id} />
-					<button type="submit" class="restaurer">Restaurer</button>
-				</form>
-			</li>
-		{/each}
-	</ul>
 
-	<p class="total">{data.total} ligne{data.total > 1 ? 's' : ''} au total</p>
+					{#if ligne.motif !== 'CONSOMME'}
+						<form method="POST" action="?/restaurer" class="restaurer">
+							<input type="hidden" name="id" value={ligne.id} />
+							<button type="submit" class="bouton-secondaire">Restaurer</button>
+						</form>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	{/each}
 
 	{#if data.totalPages > 1}
-		<nav class="pagination">
+		<nav class="pagination" aria-label="Pagination">
 			{#if data.page > 1}
 				<a href={pageUrl(data.page - 1)}>← Précédent</a>
 			{/if}
-			<span class="page-actuelle">Page {data.page} / {data.totalPages}</span>
+			<span>Page {data.page} sur {data.totalPages}</span>
 			{#if data.page < data.totalPages}
 				<a href={pageUrl(data.page + 1)}>Suivant →</a>
 			{/if}
@@ -117,232 +158,206 @@
 {/if}
 
 <style>
-	header {
+	.stats {
 		display: flex;
-		align-items: baseline;
-		gap: 0.75rem;
-		margin-bottom: 1rem;
+		gap: 8px;
+		margin-bottom: 0.75rem;
 	}
 
-	h1 {
-		font-size: 1.25rem;
-		margin: 0;
-	}
-
-	.retour {
-		color: var(--lien);
-		text-decoration: none;
-		font-weight: 600;
-		white-space: nowrap;
-	}
-
-	.recap {
-		list-style: none;
-		margin: 0 0 1rem;
-		padding: 0;
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 0.5rem;
-	}
-
-	.recap-item {
-		border-radius: 10px;
-		padding: 0.6rem 0.4rem;
+	.stat {
+		flex: 1;
+		min-width: 0;
+		background: var(--stat-fond);
+		backdrop-filter: blur(18px) saturate(180%);
+		-webkit-backdrop-filter: blur(18px) saturate(180%);
+		border: 1px solid var(--stat-bordure);
+		border-radius: 14px;
+		padding: 10px 8px;
 		text-align: center;
-		border: 1px solid var(--bordure);
 	}
 
-	.recap-nombre {
-		display: block;
-		font-size: 1.3rem;
+	.chiffre {
+		font-size: 19px;
 		font-weight: 700;
 	}
 
-	.recap-libelle {
-		display: block;
-		font-size: 0.72rem;
+	.consomme {
+		color: var(--succes-plein);
+	}
+	.perime {
+		color: var(--sev-danger);
+	}
+	.autre {
 		color: var(--texte-attenue);
 	}
 
-	.recap-consomme {
-		background: rgba(26, 127, 55, 0.14);
-		border-color: var(--succes-texte-plein);
-	}
-	.recap-consomme .recap-nombre {
-		color: var(--succes-texte-plein);
-	}
-
-	.recap-perime {
-		background: #ffebe9;
-		border-color: var(--erreur-texte);
-	}
-	.recap-perime .recap-nombre {
-		color: var(--erreur-texte);
-	}
-
-	.recap-autre {
-		background: var(--surface-attenuee);
-		border-color: var(--texte-attenue);
-	}
-	.recap-autre .recap-nombre {
+	.libelle {
+		font-size: 10px;
 		color: var(--texte-attenue);
+		margin-top: 2px;
 	}
 
-	.filtre {
+	.filtres {
 		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
+		gap: 8px;
+		margin-bottom: 0.75rem;
+		overflow-x: auto;
+		scrollbar-width: none;
 	}
 
-	.filtre label {
-		font-size: 0.85rem;
+	.filtres::-webkit-scrollbar {
+		display: none;
+	}
+
+	.puce {
+		background: var(--puce-fond);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		color: var(--puce-texte);
+		font-size: 13px;
+		font-weight: 600;
+		padding: 7px 14px;
+		border-radius: 999px;
+		white-space: nowrap;
+		border: 1px solid var(--puce-bordure);
+		text-decoration: none;
+		flex-shrink: 0;
+	}
+
+	.puce.active {
+		background: rgba(193, 98, 45, 0.75);
+		color: #fff;
+		border-color: rgba(255, 255, 255, 0.3);
+	}
+
+	.jour {
+		font-size: 12px;
+		font-weight: 700;
 		color: var(--texte-attenue);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		margin: 14px 0 6px;
 	}
 
-	.filtre select {
-		flex: 1;
-		padding: 0.55rem;
-		font-size: 1rem;
-		border: 1px solid var(--bordure);
-		border-radius: 8px;
-		background: var(--surface);
-	}
-
-	.vide {
-		background: var(--surface-attenuee);
-		border: 1px dashed var(--bordure);
-		border-radius: 10px;
-		padding: 1.5rem 1rem;
-		text-align: center;
-		color: var(--texte-attenue);
-	}
-
-	.erreur {
-		background: #ffebe9;
-		border: 1px solid var(--erreur-texte);
-		color: var(--erreur-texte);
-		border-radius: 8px;
-		padding: 0.6rem 0.75rem;
-		font-size: 0.85rem;
-		margin: 0 0 1rem;
-	}
-
-	.liste {
+	.lignes {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 6px;
 	}
 
-	.ligne {
-		border: 1px solid var(--bordure);
-		border-left: 6px solid var(--couleur);
-		border-radius: 10px;
-		padding: 0.6rem 0.75rem;
-		background: var(--surface);
-	}
-
-	.ligne-principale {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-	}
-
-	.restaurer-form {
-		margin-top: 0.5rem;
-		text-align: right;
-	}
-
-	.restaurer {
-		min-height: 36px;
-		padding: 0 0.75rem;
-		font-size: 0.8rem;
-		border: 1px solid var(--bordure);
-		border-radius: 8px;
-		background: var(--surface-attenuee);
-		color: var(--texte);
-		cursor: pointer;
+	.carte {
+		padding: 12px;
+		border-radius: 16px;
+		border-left: 4px solid var(--couleur);
 	}
 
 	.motif-CONSOMME {
-		--couleur: var(--succes-texte-plein);
+		--couleur: var(--succes-plein);
 	}
 	.motif-JETE_PERIME {
-		--couleur: var(--erreur-texte);
+		--couleur: var(--sev-danger);
 	}
 	.motif-JETE_AUTRE {
 		--couleur: var(--texte-attenue);
 	}
 
-	.pastille {
+	.haut {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.visuel {
+		position: relative;
 		flex-shrink: 0;
-		width: 1.8rem;
-		height: 1.8rem;
+		display: flex;
+	}
+
+	/* La pastille de motif se lit d'un coup d'œil dans une liste dense,
+	   là où seule l'étiquette texte obligeait à lire chaque ligne. */
+	.pastille {
+		position: absolute;
+		bottom: -3px;
+		right: -3px;
+		width: 18px;
+		height: 18px;
 		border-radius: 999px;
 		background: var(--couleur);
 		color: #fff;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		font-size: 10px;
 		font-weight: 700;
+		border: 2px solid var(--fond-page);
 	}
 
-	.details {
+	.motif-JETE_PERIME .pastille {
+		color: var(--sev-badge-texte);
+	}
+
+	.infos {
 		flex: 1;
 		min-width: 0;
 	}
 
 	.nom {
-		margin: 0;
 		font-weight: 600;
-		font-size: 0.95rem;
-		overflow-wrap: anywhere;
+		font-size: 14px;
+		margin: 0;
 	}
 
 	.meta {
-		margin: 0.15rem 0 0;
-		font-size: 0.8rem;
+		font-size: 11.5px;
 		color: var(--texte-attenue);
+		margin: 1px 0 0;
 	}
 
-	.motif-libelle {
-		flex-shrink: 0;
+	.etiquette {
+		font-size: 11px;
+		font-weight: 700;
 		color: var(--couleur);
-		font-size: 0.78rem;
-		font-weight: 600;
+		flex-shrink: 0;
 		text-align: right;
-		max-width: 6rem;
 	}
 
-	.total {
-		margin: 0.9rem 0 0;
-		font-size: 0.82rem;
-		color: var(--texte-attenue);
+	.restaurer {
+		text-align: right;
+		margin-top: 8px;
+	}
+
+	.restaurer button {
+		min-height: 32px;
+		padding: 0 12px;
+		border-radius: 9px;
+		font-size: 12px;
+	}
+
+	.vide {
+		background: var(--tuile-fond);
+		border: 1px dashed var(--tuile-bordure);
+		border-radius: var(--rayon-tuile);
+		padding: 1.5rem 1rem;
 		text-align: center;
+		color: var(--texte-attenue);
 	}
 
 	.pagination {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-		margin-top: 0.75rem;
+		justify-content: center;
+		gap: 1rem;
+		margin-top: 1.25rem;
+		font-size: 0.85rem;
+		color: var(--texte-attenue);
 	}
 
 	.pagination a {
-		color: var(--lien);
+		color: var(--accent-texte);
 		text-decoration: none;
 		font-weight: 600;
-		font-size: 0.9rem;
-	}
-
-	.page-actuelle {
-		font-size: 0.82rem;
-		color: var(--texte-attenue);
-		margin-left: auto;
-		margin-right: auto;
 	}
 </style>
