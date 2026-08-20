@@ -1,4 +1,5 @@
 <script lang="ts">
+	import EnteteEcran from '$lib/components/EnteteEcran.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -7,304 +8,277 @@
 
 	let confirmationHistorique = $state('');
 	let confirmationTout = $state('');
+
+	const COMMANDE_SAUVEGARDE = `docker compose exec db pg_dump \\
+  -U "$POSTGRES_USER" -d "$POSTGRES_DB" > backup.sql`;
 </script>
 
-<svelte:head><title>Maintenance — Stoguard</title></svelte:head>
+<svelte:head><title>Avancé — Stoguard</title></svelte:head>
 
-<header>
-	<a class="retour" href="/">← Stock</a>
-	<h1>Maintenance</h1>
-</header>
+<EnteteEcran titre="Avancé" retour="/parametres" libelleRetour="Retour aux réglages" />
 
-<p class="avertissement">
-	Ces opérations sont irréversibles. Sauvegardez la base avant toute purge :
-	<code>docker compose exec db pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" &gt; backup.sql</code>
-	— détails dans <code>DEPLOY.md</code>, à la racine du dépôt.
-</p>
+<div class="sections">
+	<div class="banniere banniere-avertissement">
+		<p>Ces opérations sont irréversibles. Sauvegardez la base avant toute purge :</p>
+		<pre>{COMMANDE_SAUVEGARDE}</pre>
+		<p>Détails dans <code>DEPLOY.md</code>, à la racine du dépôt.</p>
+	</div>
 
-{#if form?.succes}
-	<p class="confirmation">
-		{#if form.purge === 'historique'}
-			Historique vidé : {form.consommationsSupprimees} ligne{form.consommationsSupprimees > 1
-				? 's'
-				: ''} d'historique et {form.articlesSupprimes} article{form.articlesSupprimes > 1
-				? 's'
-				: ''} déjà sorti{form.articlesSupprimes > 1 ? 's' : ''} supprimés.
-		{:else}
-			Tout supprimé : {form.consommationsSupprimees} ligne{form.consommationsSupprimees > 1
-				? 's'
-				: ''} d'historique et {form.articlesSupprimes} article{form.articlesSupprimes > 1
-				? 's'
-				: ''} supprimés.
-		{/if}
-	</p>
-{/if}
-
-<section class="rapport">
-	<h2>Articles sans délai après ouverture</h2>
-	<p>
-		Ces articles encore en stock ont une catégorie sans délai après ouverture
-		configuré (ou aucune catégorie du tout) : s'ils sont ouverts un jour, leur
-		date effective ne sera jamais plafonnée. Purement informatif — corrigez
-		la catégorie qui convient sur la fiche de l'article, si besoin.
-	</p>
-
-	{#if data.articlesSansDelai.length === 0}
-		<p class="nombre ok">Aucun article concerné.</p>
-	{:else}
-		<ul class="liste-rapport">
-			{#each data.articlesSansDelai as article (article.id)}
-				<li>
-					<a href="/article/{article.id}/modifier">
-						{article.produit.nom}{#if article.produit.marque}
-							<span class="marque"> — {article.produit.marque}</span>{/if}
-					</a>
-					<span class="categorie">
-						{article.produit.categorie ? article.produit.categorie.nom : 'Sans catégorie'}
-					</span>
-				</li>
-			{/each}
-		</ul>
+	{#if form?.succes}
+		<p class="banniere confirmation">
+			{#if form.purge === 'historique'}
+				Historique vidé : {form.consommationsSupprimees} ligne{form.consommationsSupprimees > 1
+					? 's'
+					: ''} d'historique et {form.articlesSupprimes} article{form.articlesSupprimes > 1
+					? 's'
+					: ''} déjà sorti{form.articlesSupprimes > 1 ? 's' : ''} supprimés.
+			{:else}
+				Tout supprimé : {form.consommationsSupprimees} ligne{form.consommationsSupprimees > 1
+					? 's'
+					: ''} d'historique et {form.articlesSupprimes} article{form.articlesSupprimes > 1
+					? 's'
+					: ''} supprimés.
+			{/if}
+		</p>
 	{/if}
-</section>
 
-<section class="purge">
-	<h2>Vider l'historique</h2>
-	<p>
-		Supprime tout l'historique de consommation et les articles déjà sortis du
-		stock (consommés ou jetés). Les articles encore en stock ne sont pas
-		touchés, ni les produits, catégories et emplacements.
-	</p>
-	<p class="nombre">
-		{data.totalConsommations} ligne{data.totalConsommations > 1 ? 's' : ''} d'historique et {data.articlesSortis}
-		article{data.articlesSortis > 1 ? 's' : ''} déjà sorti{data.articlesSortis > 1 ? 's' : ''} seront
-		supprimés.
-	</p>
+	<section class="tuile">
+		<h2>Articles sans délai après ouverture</h2>
+		<p class="intro">
+			Ces articles encore en stock ont une catégorie sans délai après ouverture configuré (ou
+			aucune catégorie du tout) : s'ils sont ouverts un jour, leur date effective ne sera jamais
+			plafonnée. Purement informatif.
+		</p>
 
-	<form method="POST" action="?/viderHistorique">
-		<label for="confirmation-historique">
-			Tapez <strong>{CONFIRMATION_ATTENDUE}</strong> pour confirmer
-		</label>
-		<input
-			id="confirmation-historique"
-			name="confirmation"
-			autocomplete="off"
-			bind:value={confirmationHistorique}
-			aria-invalid={form?.purge === 'historique' && !!form?.erreur}
-		/>
-		{#if form?.purge === 'historique' && form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
-		<button type="submit" class="danger" disabled={confirmationHistorique !== CONFIRMATION_ATTENDUE}>
-			Vider l'historique
-		</button>
-	</form>
-</section>
+		{#if data.articlesSansDelai.length === 0}
+			<p class="aucun">Aucun article concerné.</p>
+		{:else}
+			<ul class="liste">
+				{#each data.articlesSansDelai as article (article.id)}
+					<li>
+						<a href="/article/{article.id}/modifier">
+							{article.produit.marque
+								? `${article.produit.nom} · ${article.produit.marque}`
+								: article.produit.nom}
+						</a>
+						<span class="valeur">
+							{article.produit.categorie ? article.produit.categorie.nom : 'Sans catégorie'}
+						</span>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
 
-<section class="purge">
-	<h2>Tout supprimer</h2>
-	<p>
-		Supprime tout l'historique de consommation et TOUS les articles, y
-		compris ceux encore en stock. Les produits, catégories et emplacements
-		ne sont pas touchés.
-	</p>
-	<p class="nombre">
-		{data.totalConsommations} ligne{data.totalConsommations > 1 ? 's' : ''} d'historique et {data.totalArticles}
-		article{data.totalArticles > 1 ? 's' : ''} au total seront supprimés.
-	</p>
+	<section class="tuile">
+		<h2>Vider l'historique</h2>
+		<p class="intro">
+			Supprime tout l'historique de consommation et les articles déjà sortis du stock (consommés
+			ou jetés). Les articles encore en stock ne sont pas touchés, ni les produits, catégories et
+			emplacements.
+		</p>
+		<p class="nombre">
+			{data.totalConsommations} ligne{data.totalConsommations > 1 ? 's' : ''} d'historique et {data.articlesSortis}
+			article{data.articlesSortis > 1 ? 's' : ''} déjà sorti{data.articlesSortis > 1 ? 's' : ''} seront
+			supprimés.
+		</p>
 
-	<form method="POST" action="?/toutSupprimer">
-		<label for="confirmation-tout">
-			Tapez <strong>{CONFIRMATION_ATTENDUE}</strong> pour confirmer
-		</label>
-		<input
-			id="confirmation-tout"
-			name="confirmation"
-			autocomplete="off"
-			bind:value={confirmationTout}
-			aria-invalid={form?.purge === 'tout' && !!form?.erreur}
-		/>
-		{#if form?.purge === 'tout' && form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
-		<button type="submit" class="danger" disabled={confirmationTout !== CONFIRMATION_ATTENDUE}>
-			Tout supprimer
-		</button>
-	</form>
-</section>
+		<form method="POST" action="?/viderHistorique">
+			<label for="confirmation-historique">
+				Tapez <strong>{CONFIRMATION_ATTENDUE}</strong> pour confirmer
+			</label>
+			<input
+				id="confirmation-historique"
+				name="confirmation"
+				class="champ"
+				autocomplete="off"
+				bind:value={confirmationHistorique}
+				aria-invalid={form?.purge === 'historique' && !!form?.erreur}
+			/>
+			{#if form?.purge === 'historique' && form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
+			<button type="submit" class="danger" disabled={confirmationHistorique !== CONFIRMATION_ATTENDUE}>
+				Vider l'historique
+			</button>
+		</form>
+	</section>
+
+	<section class="tuile">
+		<h2>Tout supprimer</h2>
+		<p class="intro">
+			Supprime tout l'historique de consommation et TOUS les articles, y compris ceux encore en
+			stock. Les produits, catégories et emplacements ne sont pas touchés.
+		</p>
+		<p class="nombre">
+			{data.totalConsommations} ligne{data.totalConsommations > 1 ? 's' : ''} d'historique et {data.totalArticles}
+			article{data.totalArticles > 1 ? 's' : ''} au total seront supprimés.
+		</p>
+
+		<form method="POST" action="?/toutSupprimer">
+			<label for="confirmation-tout">
+				Tapez <strong>{CONFIRMATION_ATTENDUE}</strong> pour confirmer
+			</label>
+			<input
+				id="confirmation-tout"
+				name="confirmation"
+				class="champ"
+				autocomplete="off"
+				bind:value={confirmationTout}
+				aria-invalid={form?.purge === 'tout' && !!form?.erreur}
+			/>
+			{#if form?.purge === 'tout' && form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
+			<button type="submit" class="danger" disabled={confirmationTout !== CONFIRMATION_ATTENDUE}>
+				Tout supprimer
+			</button>
+		</form>
+	</section>
+</div>
 
 <style>
-	header {
+	.sections {
 		display: flex;
-		align-items: baseline;
-		gap: 0.75rem;
-		margin-bottom: 1rem;
+		flex-direction: column;
+		gap: 14px;
 	}
 
-	h1 {
-		font-size: 1.25rem;
+	.tuile {
+		padding: 14px;
+	}
+
+	h2 {
+		font-size: 13px;
+		font-weight: 700;
+		margin: 0 0 6px;
+	}
+
+	.intro {
+		font-size: 11.5px;
+		color: var(--texte-attenue);
+		line-height: 1.5;
+		margin: 0 0 8px;
+	}
+
+	.banniere p {
 		margin: 0;
 	}
 
-	.retour {
-		color: var(--lien);
-		text-decoration: none;
-		font-weight: 600;
-		white-space: nowrap;
+	/* Bloc terminal : reste foncé dans les deux thèmes, il imite une console
+	   et non une surface de l'interface. */
+	.banniere pre + p {
+		margin-top: 6px;
 	}
 
-	.avertissement {
-		background: var(--avertissement-fond);
-		border: 1px solid var(--avertissement-bordure);
-		color: var(--avertissement-texte);
-		border-radius: 10px;
-		padding: 0.75rem;
-		font-size: 0.85rem;
-		line-height: 1.5;
-		margin: 0 0 1.25rem;
-	}
-
-	.avertissement code {
-		display: block;
-		/* Bloc terminal : reste foncé dans les deux thèmes, il imite une
-		   console et non une surface de l'interface. */
+	pre {
 		background: #1a1d22;
 		color: #f6f8fa;
-		border-radius: 6px;
-		padding: 0.5rem;
-		margin: 0.4rem 0;
-		font-size: 0.78rem;
+		font-family: var(--police-mono);
+		font-size: 10.5px;
+		line-height: 1.5;
+		border-radius: 8px;
+		padding: 10px;
+		margin: 8px 0;
 		overflow-x: auto;
 		white-space: pre;
 	}
 
+	code {
+		font-family: var(--police-mono);
+		font-size: 0.92em;
+	}
+
 	.confirmation {
 		background: rgba(26, 127, 55, 0.14);
-		border: 1px solid var(--succes-texte-plein);
-		color: var(--succes-texte-plein);
-		border-radius: 10px;
-		padding: 0.75rem;
-		font-size: 0.9rem;
-		margin: 0 0 1.25rem;
+		border: 1px solid var(--succes-plein);
+		color: var(--succes-plein);
 	}
 
-	.rapport,
-	.purge {
-		border: 1px solid var(--bordure);
-		border-radius: 10px;
-		padding: 1rem;
-		margin-bottom: 1.25rem;
-		background: var(--surface);
-	}
-
-	.rapport h2,
-	.purge h2 {
-		font-size: 1.05rem;
-		margin: 0 0 0.5rem;
-	}
-
-	.rapport p {
-		margin: 0 0 0.5rem;
-		font-size: 0.88rem;
-		color: var(--texte-attenue);
-		line-height: 1.5;
-	}
-
-	.nombre.ok {
+	.aucun {
+		font-size: 12.5px;
 		font-weight: 600;
-		color: var(--succes-texte-plein) !important;
+		color: var(--succes-plein);
+		margin: 0;
 	}
 
-	.liste-rapport {
+	.liste {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 	}
 
-	.liste-rapport li {
+	.liste li {
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
 		gap: 0.75rem;
-		padding: 0.5rem 0;
-		border-top: 1px solid var(--bordure-legere);
-		font-size: 0.9rem;
+		padding: 9px 0;
+		border-top: 1px solid var(--puce-bordure);
+		font-size: 13px;
 	}
 
-	.liste-rapport li:first-child {
-		border-top: none;
-	}
-
-	.liste-rapport a {
-		color: var(--lien);
+	.liste a {
+		color: var(--accent-texte);
 		text-decoration: none;
 		font-weight: 600;
 	}
 
-	.liste-rapport .marque {
+	.valeur {
+		font-size: 11.5px;
 		color: var(--texte-attenue);
-		font-weight: 400;
-	}
-
-	.liste-rapport .categorie {
-		color: var(--texte-attenue);
-		font-size: 0.82rem;
 		white-space: nowrap;
 	}
 
-	.purge p {
-		margin: 0 0 0.5rem;
-		font-size: 0.88rem;
-		color: var(--texte-attenue);
-		line-height: 1.5;
-	}
-
 	.nombre {
+		font-size: 12px;
 		font-weight: 600;
-		color: var(--avertissement-texte) !important;
+		color: var(--avertissement-texte);
+		margin: 0;
 	}
 
-	.purge form {
+	form {
 		display: flex;
 		flex-direction: column;
-		margin-top: 0.75rem;
+		margin-top: 12px;
 	}
 
-	.purge label {
-		font-size: 0.85rem;
+	label {
+		font-size: 11px;
 		font-weight: 600;
-		color: var(--texte);
-		margin-bottom: 0.3rem;
+		color: var(--texte-attenue);
+		margin-bottom: 5px;
 	}
 
-	.purge input {
-		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
+	.champ {
 		font-size: 16px;
-		padding: 0.6rem;
-		border: 1px solid var(--bordure);
-		border-radius: 8px;
-		background: var(--surface);
-		width: 100%;
-		box-sizing: border-box;
+		padding: 10px 12px;
+		border-radius: 10px;
+	}
+
+	.champ[aria-invalid='true'] {
+		border-color: var(--danger-bordure);
 	}
 
 	.erreur {
-		color: var(--erreur-texte);
-		font-size: 0.82rem;
+		color: var(--danger-texte);
+		font-size: 0.8rem;
 		margin: 0.4rem 0 0;
 	}
 
 	button.danger {
-		margin-top: 0.75rem;
+		margin-top: 12px;
 		min-height: 48px;
-		font-size: 1rem;
-		font-weight: 600;
-		border: none;
-		border-radius: 8px;
-		background: var(--danger-plein);
-		color: #fff;
+		border-radius: 16px;
+		border: 1px solid var(--danger-bordure);
+		background: var(--danger-fond);
+		color: var(--danger-texte);
+		font-family: inherit;
+		font-size: 14px;
+		font-weight: 700;
 		cursor: pointer;
 	}
 
 	button.danger:disabled {
-		background: var(--bordure);
-		color: #8c959f;
+		border-color: var(--puce-bordure);
+		background: var(--puce-fond);
+		color: var(--texte-attenue);
 		cursor: not-allowed;
 	}
 </style>

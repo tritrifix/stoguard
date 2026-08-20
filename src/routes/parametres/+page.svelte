@@ -1,308 +1,212 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import BasculeTheme from '$lib/components/BasculeTheme.svelte';
 	import type { PageProps } from './$types';
 
-	let { data, form }: PageProps = $props();
+	let { data }: PageProps = $props();
 
-	type EtatNotifications =
-		| 'verification'
-		| 'non-supporte'
-		| 'inactif'
-		| 'actif'
-		| 'refuse'
-		| 'erreur';
-
-	let etatNotifications = $state<EtatNotifications>('verification');
-	let heureLocale = $state<number | null>(null);
-	const heureChoisie = $derived(heureLocale ?? data.heureNotification);
-
-	/** Le navigateur attend l'applicationServerKey en Uint8Array, la clé
-	 * VAPID publique voyage en base64url : conversion nécessaire. */
-	function urlBase64VersUint8Array(base64: string): Uint8Array {
-		const complement = '='.repeat((4 - (base64.length % 4)) % 4);
-		const base64Standard = (base64 + complement).replace(/-/g, '+').replace(/_/g, '/');
-		const brut = atob(base64Standard);
-		return Uint8Array.from([...brut].map((c) => c.charCodeAt(0)));
-	}
-
-	async function verifierEtatAbonnement() {
-		if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-			etatNotifications = 'non-supporte';
-			return;
-		}
-		const enregistrement = await navigator.serviceWorker.ready;
-		const abonnement = await enregistrement.pushManager.getSubscription();
-		etatNotifications = abonnement ? 'actif' : 'inactif';
-	}
-
-	onMount(verifierEtatAbonnement);
-
-	async function activerNotifications() {
-		const permission = await Notification.requestPermission();
-		if (permission !== 'granted') {
-			etatNotifications = 'refuse';
-			return;
-		}
-
-		try {
-			const enregistrement = await navigator.serviceWorker.ready;
-			const abonnement = await enregistrement.pushManager.subscribe({
-				userVisibleOnly: true,
-				applicationServerKey: urlBase64VersUint8Array(data.vapidPublicKey) as BufferSource
-			});
-			const json = abonnement.toJSON();
-
-			const donnees = new FormData();
-			donnees.set('endpoint', json.endpoint ?? '');
-			donnees.set('p256dh', json.keys?.p256dh ?? '');
-			donnees.set('auth', json.keys?.auth ?? '');
-			await fetch('?/activerNotifications', { method: 'POST', body: donnees });
-
-			etatNotifications = 'actif';
-		} catch {
-			etatNotifications = 'erreur';
-		}
-	}
-
-	async function desactiverNotifications() {
-		const enregistrement = await navigator.serviceWorker.ready;
-		const abonnement = await enregistrement.pushManager.getSubscription();
-		if (abonnement) {
-			const endpoint = abonnement.endpoint;
-			await abonnement.unsubscribe();
-			const donnees = new FormData();
-			donnees.set('endpoint', endpoint);
-			await fetch('?/desactiverNotifications', { method: 'POST', body: donnees });
-		}
-		etatNotifications = 'inactif';
-	}
+	const VERSION = '1.0';
 </script>
 
-<svelte:head><title>Paramètres — Stoguard</title></svelte:head>
+<svelte:head><title>Réglages — Stoguard</title></svelte:head>
 
-<header>
-	<a class="retour" href="/">← Stock</a>
-	<h1>Paramètres</h1>
-</header>
+<header><h1>Réglages</h1></header>
 
-<section class="bloc">
-	<h2>Changer le mot de passe</h2>
-	<p>
-		Change le mot de passe de connexion à l'application. Déconnecte
-		immédiatement toutes les sessions ouvertes, y compris celle-ci — une
-		reconnexion sera nécessaire juste après.
-	</p>
+<div class="sections">
+	<a class="tuile ligne compte" href="/parametres/mot-de-passe">
+		<span class="avatar" aria-hidden="true">S</span>
+		<span class="texte">
+			<span class="titre">Compte</span>
+			<span class="sous-titre">Modifier le mot de passe</span>
+		</span>
+		<svg width="8" height="14" viewBox="0 0 9 16" fill="none" aria-hidden="true">
+			<path d="M1 1l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+		</svg>
+	</a>
 
-	<form method="POST" action="?/changerMotDePasse">
-		<label for="motDePasseActuel">Mot de passe actuel *</label>
-		<input
-			id="motDePasseActuel"
-			name="motDePasseActuel"
-			type="password"
-			autocomplete="current-password"
-			required
-			aria-invalid={!!form?.erreur}
-		/>
+	<section class="tuile">
+		<h2>Apparence</h2>
+		<div class="ligne-interne">
+			<span class="texte">
+				<span class="titre">Thème sombre</span>
+				<span class="sous-titre">Suit le bouton des autres écrans</span>
+			</span>
+			<BasculeTheme compact />
+		</div>
+	</section>
 
-		<label for="nouveauMotDePasse">Nouveau mot de passe *</label>
-		<input
-			id="nouveauMotDePasse"
-			name="nouveauMotDePasse"
-			type="password"
-			autocomplete="new-password"
-			minlength="8"
-			required
-		/>
-
-		<label for="confirmation">Confirmer le nouveau mot de passe *</label>
-		<input
-			id="confirmation"
-			name="confirmation"
-			type="password"
-			autocomplete="new-password"
-			minlength="8"
-			required
-		/>
-
-		{#if form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
-
-		<button type="submit">Changer le mot de passe</button>
-	</form>
-</section>
-
-<section class="bloc">
-	<h2>Notifications de péremption</h2>
-
-	{#if !data.notificationsConfigurees}
-		<p>
-			Non configurées côté serveur : clés VAPID absentes. Voir
-			<code>npm run vapid:generate</code> et le fichier <code>.env</code>.
+	<section class="tuile">
+		<h2>Catégories &amp; délais</h2>
+		<p class="sous-titre bloc">Délai après ouverture par défaut, par catégorie</p>
+		{#each data.categories as categorie (categorie.id)}
+			<div class="rangee">
+				<span>{categorie.nom}</span>
+				<span class="valeur">
+					{categorie.delaiApresOuverture} jour{categorie.delaiApresOuverture === 1 ? '' : 's'}
+				</span>
+			</div>
+		{/each}
+		<p class="note">
+			{data.nombreCategories} catégories et {data.nombreEmplacements} emplacements. Leur gestion
+			depuis l'application arrive dans une prochaine étape ; en attendant, la catégorie d'un
+			produit se change depuis la fiche de l'article.
 		</p>
-	{:else if etatNotifications === 'non-supporte'}
-		<p>Ce navigateur ne prend pas en charge les notifications push.</p>
-	{:else}
-		<p>
-			Une notification groupée chaque jour pour les produits périmés ou à
-			consommer sous 3 jours — jamais une par produit.
-		</p>
+	</section>
 
-		{#if etatNotifications === 'actif'}
-			<button type="button" onclick={desactiverNotifications}>
-				Désactiver les notifications
-			</button>
-		{:else}
-			<button type="button" onclick={activerNotifications}>
-				Activer les notifications
-			</button>
-		{/if}
+	<a class="tuile ligne" href="/parametres/notifications">
+		<span class="texte">
+			<span class="titre">Notifications</span>
+			<span class="sous-titre">Alertes de péremption et heure d'envoi</span>
+		</span>
+		<svg width="8" height="14" viewBox="0 0 9 16" fill="none" aria-hidden="true">
+			<path d="M1 1l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+		</svg>
+	</a>
 
-		{#if etatNotifications === 'refuse'}
-			<p class="erreur">
-				Permission refusée. Autorise les notifications pour ce site dans les
-				réglages du navigateur pour les activer.
-			</p>
-		{:else if etatNotifications === 'erreur'}
-			<p class="erreur">Échec de l'activation. Réessaie plus tard.</p>
-		{/if}
+	<a class="tuile ligne" href="/maintenance">
+		<span class="texte">
+			<span class="titre">Avancé</span>
+			<span class="sous-titre">Maintenance, purge des données</span>
+		</span>
+		<svg width="8" height="14" viewBox="0 0 9 16" fill="none" aria-hidden="true">
+			<path d="M1 1l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+		</svg>
+	</a>
 
-		<form
-			method="POST"
-			action="?/changerHeureNotification"
-			class="heure-notification"
-		>
-			<label for="heureNotification">Heure d'envoi (0-23, heure du serveur)</label>
-			<input
-				id="heureNotification"
-				name="heureNotification"
-				type="number"
-				min="0"
-				max="23"
-				step="1"
-				value={heureChoisie}
-				oninput={(e) => (heureLocale = e.currentTarget.valueAsNumber)}
-			/>
-			{#if form?.erreurHeure}<p class="erreur">{form.erreurHeure}</p>{/if}
-			<button type="submit" class="secondaire">Enregistrer l'heure</button>
-		</form>
-	{/if}
-</section>
-
-<section class="bloc">
-	<h2>Session</h2>
 	<form method="POST" action="/?/deconnexion">
 		<button type="submit" class="deconnexion">Se déconnecter</button>
 	</form>
-</section>
+
+	<p class="version">Stoguard · version {VERSION}</p>
+</div>
 
 <style>
 	header {
-		display: flex;
-		align-items: baseline;
-		gap: 0.75rem;
-		margin-bottom: 1rem;
+		margin-bottom: 0.85rem;
 	}
 
 	h1 {
-		font-size: 1.25rem;
+		font-weight: 700;
+		font-size: 17px;
+		text-align: center;
 		margin: 0;
+		/* Aligné sur la hauteur du bouton retour des autres écrans, qui
+		   n'existe pas ici : Réglages est une destination de la barre. */
+		line-height: 40px;
 	}
 
-	.retour {
-		color: var(--lien);
+	.sections {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
+
+	.tuile {
+		padding: 14px;
+		border-radius: 18px;
+	}
+
+	h2 {
+		font-size: 13px;
+		font-weight: 700;
+		margin: 0 0 12px;
+	}
+
+	.ligne,
+	.ligne-interne {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		color: var(--texte);
 		text-decoration: none;
-		font-weight: 600;
+	}
+
+	.ligne {
+		color: var(--texte-attenue);
+	}
+
+	.texte {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.titre {
+		font-size: 14px;
+		font-weight: 700;
+		color: var(--texte);
+	}
+
+	.sous-titre {
+		font-size: 11.5px;
+		color: var(--texte-attenue);
+		margin-top: 1px;
+	}
+
+	.sous-titre.bloc {
+		margin: -8px 0 10px;
+	}
+
+	.avatar {
+		width: 46px;
+		height: 46px;
+		border-radius: 999px;
+		background: var(--accent-degrade);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #fff;
+		font-weight: 700;
+		font-size: 17px;
+		flex-shrink: 0;
+	}
+
+	.compte .titre {
+		font-size: 15px;
+	}
+
+	.rangee {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 9px 0;
+		border-top: 1px solid var(--puce-bordure);
+		font-size: 13.5px;
+	}
+
+	.valeur {
+		font-size: 12.5px;
+		color: var(--texte-attenue);
 		white-space: nowrap;
 	}
 
-	.bloc {
-		border: 1px solid var(--bordure);
-		border-radius: 10px;
-		padding: 1rem;
-		background: var(--surface);
-	}
-
-	.bloc h2 {
-		font-size: 1.05rem;
-		margin: 0 0 0.5rem;
-	}
-
-	.bloc > p {
-		margin: 0 0 0.5rem;
-		font-size: 0.88rem;
+	.note {
+		font-size: 11px;
 		color: var(--texte-attenue);
 		line-height: 1.5;
+		margin: 10px 0 0;
 	}
 
-	form {
-		display: flex;
-		flex-direction: column;
-		margin-top: 0.75rem;
-	}
-
-	label {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--texte);
-		margin: 0.9rem 0 0.3rem;
-	}
-
-	label:first-of-type {
-		margin-top: 0;
-	}
-
-	input {
-		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
-		font-size: 16px;
-		padding: 0.6rem;
-		border: 1px solid var(--bordure);
-		border-radius: 8px;
-		background: var(--surface);
+	.deconnexion {
 		width: 100%;
-		box-sizing: border-box;
-	}
-
-	input[aria-invalid='true'] {
-		border-color: var(--erreur-texte);
-	}
-
-	.erreur {
-		color: var(--erreur-texte);
-		font-size: 0.82rem;
-		margin: 0.6rem 0 0;
-	}
-
-	button {
-		margin-top: 1.25rem;
 		min-height: 48px;
-		font-size: 1rem;
-		font-weight: 600;
-		border: none;
-		border-radius: 8px;
-		background: var(--action-plein);
-		color: #fff;
+		border-radius: 16px;
+		background: var(--puce-fond);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		border: 1px solid var(--puce-bordure);
+		color: var(--danger-texte);
+		font-family: inherit;
+		font-size: 14px;
+		font-weight: 700;
 		cursor: pointer;
 	}
 
-	button.secondaire {
-		background: none;
-		border: 1px solid var(--bordure);
-		color: var(--texte);
-	}
-
-	.heure-notification {
-		margin-top: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid var(--bordure);
-	}
-
-	.heure-notification input {
-		max-width: 100px;
-	}
-
-	button.deconnexion {
-		background: none;
-		border: 1px solid var(--danger-bordure);
-		color: var(--danger-texte);
-		width: 100%;
+	.version {
+		text-align: center;
+		font-size: 11px;
+		color: var(--texte-attenue);
+		margin: 0;
 	}
 </style>
