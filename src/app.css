@@ -63,6 +63,9 @@
 	--rayon-pilule: 26px;
 
 	--accent: #c1622d;
+	/* Version lisible de l'accent pour du texte : le terracotta plein manque
+	   de contraste sur le fond sombre. */
+	--accent-texte: #a8501f;
 	--accent-degrade: linear-gradient(135deg, #d6733e, #c1622d);
 
 	--fond-page: #fbf3ea;
@@ -215,6 +218,7 @@
 	--info-bordure: rgba(120, 170, 255, 0.32);
 	--info-texte: #9dc0ff;
 
+	--accent-texte: #ff9e6b;
 	--surface: rgba(30, 20, 15, 0.62);
 	--surface-attenuee: rgba(255, 255, 255, 0.05);
 	--bordure: rgba(255, 255, 255, 0.14);

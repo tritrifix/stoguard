@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import BasculeTheme from '$lib/components/BasculeTheme.svelte';
 
 	type Etat = 'demarrage' | 'pret' | 'non-supporte' | 'refuse' | 'absente' | 'erreur';
 
@@ -153,101 +154,135 @@
 
 <svelte:head><title>Scanner un code-barre — Stoguard</title></svelte:head>
 
-<header>
-	<a class="retour" href="/">← Stock</a>
-	<h1>Scanner</h1>
-</header>
+<div class="ecran">
+	<header>
+		<a class="retour" href="/" aria-label="Retour au stock">
+			<svg width="10" height="16" viewBox="0 0 12 20" fill="none" aria-hidden="true">
+				<path
+					d="M10 2L2 10l8 8"
+					stroke="currentColor"
+					stroke-width="2.4"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
+		</a>
+		<h1>Scanner</h1>
+		<BasculeTheme compact />
+	</header>
 
-{#if cameras.length > 1}
-	<label class="choix-camera-label" for="choix-camera">Caméra</label>
-	<select
-		id="choix-camera"
-		class="choix-camera"
-		value={cameraActive}
-		onchange={(e) => changerCamera(e.currentTarget.value)}
-	>
-		{#each cameras as camera, i (camera.deviceId)}
-			<option value={camera.deviceId}>{camera.label || `Caméra ${i + 1}`}</option>
-		{/each}
-	</select>
-{/if}
+	<div class="apercu">
+		<!-- svelte-ignore a11y_media_has_caption -->
+		<video bind:this={videoEl} class:visible={etat === 'pret'} playsinline muted></video>
 
-<div class="apercu">
-	<!-- svelte-ignore a11y_media_has_caption -->
-	<video bind:this={videoEl} class:visible={etat === 'pret'} playsinline muted></video>
+		{#if etat === 'pret'}
+			<div class="reticule" aria-hidden="true">
+				<span class="coin hg"></span>
+				<span class="coin hd"></span>
+				<span class="coin bg"></span>
+				<span class="coin bd"></span>
+			</div>
+			<p class="consigne">Place le code-barre dans le cadre</p>
+		{:else if etat === 'demarrage'}
+			<p class="message">Démarrage de la caméra…</p>
+		{:else if etat === 'non-supporte'}
+			<p class="message">
+				Le scan n'est pas pris en charge par ce navigateur. Utilise la saisie manuelle.
+			</p>
+		{:else if etat === 'refuse'}
+			<p class="message">
+				Accès à la caméra refusé. Autorise-le dans les réglages du navigateur, ou utilise la saisie
+				manuelle.
+			</p>
+		{:else if etat === 'absente'}
+			<p class="message">Aucune caméra détectée sur cet appareil. Utilise la saisie manuelle.</p>
+		{:else if etat === 'erreur'}
+			<p class="message">Impossible d'accéder à la caméra. Utilise la saisie manuelle.</p>
+		{/if}
 
-	{#if etat === 'demarrage'}
-		<p class="message">Démarrage de la caméra…</p>
-	{:else if etat === 'non-supporte'}
-		<p class="message">
-			Le scan n'est pas pris en charge par ce navigateur. Utilise la saisie manuelle.
-		</p>
-	{:else if etat === 'refuse'}
-		<p class="message">
-			Accès à la caméra refusé. Autorise-le dans les réglages du navigateur, ou utilise la saisie
-			manuelle.
-		</p>
-	{:else if etat === 'absente'}
-		<p class="message">Aucune caméra détectée sur cet appareil. Utilise la saisie manuelle.</p>
-	{:else if etat === 'erreur'}
-		<p class="message">
-			Impossible d'accéder à la caméra. Utilise la saisie manuelle.
-		</p>
-	{/if}
+		{#if cameras.length > 1}
+			<div class="pastille-camera">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<rect x="3" y="7" width="4" height="10" rx="1" fill="#fff" />
+					<rect x="9" y="4" width="2" height="16" rx="1" fill="#fff" />
+					<rect x="14" y="7" width="3" height="10" rx="1" fill="#fff" />
+					<rect x="19" y="4" width="2" height="16" rx="1" fill="#fff" />
+				</svg>
+				<label class="sr-only" for="choix-camera">Caméra</label>
+				<select
+					id="choix-camera"
+					value={cameraActive}
+					onchange={(e) => changerCamera(e.currentTarget.value)}
+				>
+					{#each cameras as camera, i (camera.deviceId)}
+						<option value={camera.deviceId}>{camera.label || `Caméra ${i + 1}`}</option>
+					{/each}
+				</select>
+			</div>
+		{/if}
+	</div>
+
+	<div class="bas">
+		<a class="manuel" href="/ajouter">
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+				<rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.8" />
+				<path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+			</svg>
+			Saisir manuellement
+		</a>
+	</div>
 </div>
 
-<a class="manuel" href="/ajouter">Saisir manuellement</a>
-
 <style>
-	header {
+	.ecran {
 		display: flex;
-		align-items: baseline;
-		gap: 0.75rem;
-		margin-bottom: 1rem;
+		flex-direction: column;
+		/* Le viseur occupe la hauteur disponible : la barre de navigation est
+		   masquée sur cet écran, le padding du layout est donc le seul retrait. */
+		min-height: calc(100vh - 3.25rem);
 	}
 
-	h1 {
-		font-size: 1.25rem;
-		margin: 0;
+	header {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-shrink: 0;
+		margin-bottom: 8px;
 	}
 
 	.retour {
-		color: var(--lien);
-		text-decoration: none;
-		font-weight: 600;
-		white-space: nowrap;
-	}
-
-	.choix-camera-label {
-		display: block;
-		font-size: 0.85rem;
-		font-weight: 600;
+		width: 40px;
+		height: 40px;
+		border-radius: 999px;
+		background: var(--puce-fond);
+		border: 1px solid var(--puce-bordure);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 		color: var(--texte);
-		margin-bottom: 0.3rem;
 	}
 
-	.choix-camera {
-		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
-		font-size: 16px;
-		padding: 0.5rem;
-		border: 1px solid var(--bordure);
-		border-radius: 8px;
-		background: var(--surface);
-		width: 100%;
-		box-sizing: border-box;
-		margin-bottom: 0.75rem;
+	h1 {
+		flex: 1;
+		font-weight: 700;
+		font-size: 19px;
+		text-align: center;
+		margin: 0;
 	}
 
 	.apercu {
 		position: relative;
-		/* Déborde du padding du layout pour un aperçu bord à bord sur mobile. */
-		margin: 0 -0.75rem;
-		aspect-ratio: 3 / 4;
-		background: #000;
+		flex: 1;
+		min-height: 340px;
+		border-radius: var(--rayon-pilule);
+		overflow: hidden;
+		background: linear-gradient(160deg, #1a1a22, #05050a 70%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		overflow: hidden;
 	}
 
 	video {
@@ -261,6 +296,67 @@
 		visibility: visible;
 	}
 
+	.reticule {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 78%;
+		height: 34%;
+		pointer-events: none;
+	}
+
+	.coin {
+		position: absolute;
+		width: 30px;
+		height: 30px;
+		opacity: 0.9;
+	}
+
+	.hg {
+		top: 0;
+		left: 0;
+		border-top: 3px solid #fff;
+		border-left: 3px solid #fff;
+		border-radius: 8px 0 0 0;
+	}
+
+	.hd {
+		top: 0;
+		right: 0;
+		border-top: 3px solid #fff;
+		border-right: 3px solid #fff;
+		border-radius: 0 8px 0 0;
+	}
+
+	.bg {
+		bottom: 0;
+		left: 0;
+		border-bottom: 3px solid #fff;
+		border-left: 3px solid #fff;
+		border-radius: 0 0 0 8px;
+	}
+
+	.bd {
+		bottom: 0;
+		right: 0;
+		border-bottom: 3px solid #fff;
+		border-right: 3px solid #fff;
+		border-radius: 0 0 8px 0;
+	}
+
+	.consigne {
+		position: absolute;
+		bottom: 20px;
+		left: 0;
+		right: 0;
+		text-align: center;
+		color: rgba(255, 255, 255, 0.75);
+		font-size: 12px;
+		margin: 0;
+		pointer-events: none;
+	}
+
 	.message {
 		position: absolute;
 		inset: 0;
@@ -272,19 +368,73 @@
 		color: #fff;
 		font-size: 0.95rem;
 		background: rgba(0, 0, 0, 0.4);
+		margin: 0;
+	}
+
+	/* Le sélecteur de caméra vit dans la pastille : sur un viseur plein
+	   écran, un champ séparé au-dessus mangeait de la hauteur utile. */
+	.pastille-camera {
+		position: absolute;
+		top: 16px;
+		right: 16px;
+		background: rgba(255, 255, 255, 0.15);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		border-radius: 999px;
+		padding: 6px 12px;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		max-width: calc(100% - 32px);
+	}
+
+	.pastille-camera select {
+		background: none;
+		border: none;
+		color: #fff;
+		font-family: inherit;
+		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
+		font-size: 16px;
+		max-width: 150px;
+		padding: 0;
+	}
+
+	.pastille-camera option {
+		color: #000;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+
+	.bas {
+		flex-shrink: 0;
+		padding-top: 14px;
 	}
 
 	.manuel {
-		display: block;
-		text-align: center;
-		margin-top: 1.25rem;
-		min-height: 48px;
-		line-height: 48px;
-		font-size: 1rem;
+		width: 100%;
+		box-sizing: border-box;
+		min-height: 50px;
+		border-radius: 16px;
+		background: var(--tuile-fond);
+		backdrop-filter: blur(22px) saturate(180%);
+		-webkit-backdrop-filter: blur(22px) saturate(180%);
+		border: 1px solid var(--tuile-bordure);
+		box-shadow: var(--tuile-ombre);
+		color: var(--texte);
+		font-size: 15px;
 		font-weight: 600;
-		border-radius: 8px;
-		border: 1px solid var(--bordure);
-		color: var(--lien);
 		text-decoration: none;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
 	}
 </style>
