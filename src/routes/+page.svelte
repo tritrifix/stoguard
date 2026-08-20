@@ -117,11 +117,11 @@
 					</div>
 
 					<a class="modifier" href="/article/{ligne.id}/modifier" aria-label="Modifier {ligne.nom}">
-						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
 							<path
 								d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"
 								stroke="currentColor"
-								stroke-width="1.7"
+								stroke-width="1.9"
 								stroke-linecap="round"
 								stroke-linejoin="round"
 							/>
@@ -380,16 +380,21 @@
 	/* Hors du bloc de texte : dans l'en-tête, un nom long le renvoyait à la
 	   ligne suivante et creusait un trou dans la carte. */
 	.modifier {
-		color: var(--texte-attenue);
+		/* Cadre et fond explicites : en simple icône sans contour, l'action
+		   passait inaperçue alors que c'est le seul accès à la correction
+		   d'un article. */
+		color: var(--accent);
+		background: var(--secondaire-fond);
+		border: 1px solid var(--secondaire-bordure);
+		border-radius: 10px;
 		display: flex;
-		align-items: flex-start;
-		justify-content: flex-end;
+		align-items: center;
+		justify-content: center;
 		flex-shrink: 0;
-		/* Cible tactile confortable pour une icône de 15px. */
-		min-width: 40px;
-		min-height: 40px;
-		margin: -6px -6px 0 0;
-		padding-top: 6px;
+		/* Cible tactile confortable. */
+		width: 38px;
+		height: 38px;
+		margin: -2px -2px 0 0;
 	}
 
 	.meta {

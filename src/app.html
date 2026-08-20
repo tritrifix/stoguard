@@ -7,9 +7,10 @@
 		<script>
 			// Avant tout rendu : sans ça, un chargement en thème sombre flashe
 			// d'abord en clair. Doit rester synchrone et inline.
+			// Le clair est le défaut : la préférence système n'est pas suivie,
+			// seul un choix explicite déjà fait dans l'app bascule en sombre.
 			try {
-				var choix = localStorage.getItem('stoguard:theme');
-				if (choix === 'dark' || (!choix && matchMedia('(prefers-color-scheme: dark)').matches)) {
+				if (localStorage.getItem('stoguard:theme') === 'dark') {
 					document.documentElement.dataset.theme = 'dark';
 				}
 			} catch (e) {}

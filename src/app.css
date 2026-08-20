@@ -95,7 +95,10 @@
 
 	--secondaire-fond: rgba(255, 255, 255, 0.45);
 	--secondaire-texte: #5c4b3e;
-	--secondaire-bordure: rgba(255, 255, 255, 0.6);
+	/* Teintée plutôt que blanche : sur la tuile de verre, déjà blanchâtre,
+	   une bordure blanche translucide est invisible et le bouton se confond
+	   avec le fond. En sombre le blanc translucide fonctionne, lui. */
+	--secondaire-bordure: rgba(139, 100, 68, 0.32);
 
 	--vignette-fond: rgba(255, 255, 255, 0.6);
 
