@@ -54,7 +54,7 @@
 	label {
 		font-size: 0.85rem;
 		font-weight: 600;
-		color: #24292f;
+		color: var(--texte);
 		margin-bottom: 0.3rem;
 	}
 
@@ -62,26 +62,26 @@
 		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
 		font-size: 16px;
 		padding: 0.6rem;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--surface);
 		width: 100%;
 		box-sizing: border-box;
 	}
 
 	input[aria-invalid='true'] {
-		border-color: #cf222e;
+		border-color: var(--erreur-texte);
 	}
 
 	.erreur {
-		color: #cf222e;
+		color: var(--erreur-texte);
 		font-size: 0.82rem;
 		margin: 0.4rem 0 0;
 	}
 
 	.info {
-		background: #ddf4ff;
-		color: #0969da;
+		background: var(--info-fond);
+		color: var(--info-texte);
 		border-radius: 8px;
 		padding: 0.6rem 0.75rem;
 		font-size: 0.85rem;
@@ -99,7 +99,7 @@
 		font-weight: 600;
 		border: none;
 		border-radius: 8px;
-		background: #1f6feb;
+		background: var(--action-plein);
 		color: #fff;
 		cursor: pointer;
 	}

@@ -143,15 +143,16 @@
 	}
 
 	.retour {
-		color: #1f6feb;
+		color: var(--lien);
 		text-decoration: none;
 		font-weight: 600;
 		white-space: nowrap;
 	}
 
 	.avertissement {
-		background: #fff8c5;
-		border: 1px solid #d4a72c;
+		background: var(--avertissement-fond);
+		border: 1px solid var(--avertissement-bordure);
+		color: var(--avertissement-texte);
 		border-radius: 10px;
 		padding: 0.75rem;
 		font-size: 0.85rem;
@@ -161,7 +162,9 @@
 
 	.avertissement code {
 		display: block;
-		background: #24292f;
+		/* Bloc terminal : reste foncé dans les deux thèmes, il imite une
+		   console et non une surface de l'interface. */
+		background: #1a1d22;
 		color: #f6f8fa;
 		border-radius: 6px;
 		padding: 0.5rem;
@@ -172,9 +175,9 @@
 	}
 
 	.confirmation {
-		background: #dafbe1;
-		border: 1px solid #1a7f37;
-		color: #116329;
+		background: rgba(26, 127, 55, 0.14);
+		border: 1px solid var(--succes-texte-plein);
+		color: var(--succes-texte-plein);
 		border-radius: 10px;
 		padding: 0.75rem;
 		font-size: 0.9rem;
@@ -183,11 +186,11 @@
 
 	.rapport,
 	.purge {
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 10px;
 		padding: 1rem;
 		margin-bottom: 1.25rem;
-		background: #fff;
+		background: var(--surface);
 	}
 
 	.rapport h2,
@@ -199,13 +202,13 @@
 	.rapport p {
 		margin: 0 0 0.5rem;
 		font-size: 0.88rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 		line-height: 1.5;
 	}
 
 	.nombre.ok {
 		font-weight: 600;
-		color: #1a7f37 !important;
+		color: var(--succes-texte-plein) !important;
 	}
 
 	.liste-rapport {
@@ -220,7 +223,7 @@
 		align-items: baseline;
 		gap: 0.75rem;
 		padding: 0.5rem 0;
-		border-top: 1px solid #eaeef2;
+		border-top: 1px solid var(--bordure-legere);
 		font-size: 0.9rem;
 	}
 
@@ -229,18 +232,18 @@
 	}
 
 	.liste-rapport a {
-		color: #1f6feb;
+		color: var(--lien);
 		text-decoration: none;
 		font-weight: 600;
 	}
 
 	.liste-rapport .marque {
-		color: #57606a;
+		color: var(--texte-attenue);
 		font-weight: 400;
 	}
 
 	.liste-rapport .categorie {
-		color: #57606a;
+		color: var(--texte-attenue);
 		font-size: 0.82rem;
 		white-space: nowrap;
 	}
@@ -248,13 +251,13 @@
 	.purge p {
 		margin: 0 0 0.5rem;
 		font-size: 0.88rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 		line-height: 1.5;
 	}
 
 	.nombre {
 		font-weight: 600;
-		color: #bc4c00 !important;
+		color: var(--avertissement-texte) !important;
 	}
 
 	.purge form {
@@ -266,7 +269,7 @@
 	.purge label {
 		font-size: 0.85rem;
 		font-weight: 600;
-		color: #24292f;
+		color: var(--texte);
 		margin-bottom: 0.3rem;
 	}
 
@@ -274,15 +277,15 @@
 		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
 		font-size: 16px;
 		padding: 0.6rem;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--surface);
 		width: 100%;
 		box-sizing: border-box;
 	}
 
 	.erreur {
-		color: #cf222e;
+		color: var(--erreur-texte);
 		font-size: 0.82rem;
 		margin: 0.4rem 0 0;
 	}
@@ -294,13 +297,13 @@
 		font-weight: 600;
 		border: none;
 		border-radius: 8px;
-		background: #cf222e;
+		background: var(--danger-plein);
 		color: #fff;
 		cursor: pointer;
 	}
 
 	button.danger:disabled {
-		background: #d0d7de;
+		background: var(--bordure);
 		color: #8c959f;
 		cursor: not-allowed;
 	}

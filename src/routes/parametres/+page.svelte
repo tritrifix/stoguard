@@ -187,6 +187,13 @@
 	{/if}
 </section>
 
+<section class="bloc">
+	<h2>Session</h2>
+	<form method="POST" action="/?/deconnexion">
+		<button type="submit" class="deconnexion">Se déconnecter</button>
+	</form>
+</section>
+
 <style>
 	header {
 		display: flex;
@@ -201,17 +208,17 @@
 	}
 
 	.retour {
-		color: #1f6feb;
+		color: var(--lien);
 		text-decoration: none;
 		font-weight: 600;
 		white-space: nowrap;
 	}
 
 	.bloc {
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 10px;
 		padding: 1rem;
-		background: #fff;
+		background: var(--surface);
 	}
 
 	.bloc h2 {
@@ -222,7 +229,7 @@
 	.bloc > p {
 		margin: 0 0 0.5rem;
 		font-size: 0.88rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 		line-height: 1.5;
 	}
 
@@ -235,7 +242,7 @@
 	label {
 		font-size: 0.85rem;
 		font-weight: 600;
-		color: #24292f;
+		color: var(--texte);
 		margin: 0.9rem 0 0.3rem;
 	}
 
@@ -247,19 +254,19 @@
 		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
 		font-size: 16px;
 		padding: 0.6rem;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--surface);
 		width: 100%;
 		box-sizing: border-box;
 	}
 
 	input[aria-invalid='true'] {
-		border-color: #cf222e;
+		border-color: var(--erreur-texte);
 	}
 
 	.erreur {
-		color: #cf222e;
+		color: var(--erreur-texte);
 		font-size: 0.82rem;
 		margin: 0.6rem 0 0;
 	}
@@ -271,24 +278,31 @@
 		font-weight: 600;
 		border: none;
 		border-radius: 8px;
-		background: #1f6feb;
+		background: var(--action-plein);
 		color: #fff;
 		cursor: pointer;
 	}
 
 	button.secondaire {
 		background: none;
-		border: 1px solid #d0d7de;
-		color: #24292f;
+		border: 1px solid var(--bordure);
+		color: var(--texte);
 	}
 
 	.heure-notification {
 		margin-top: 1rem;
 		padding-top: 1rem;
-		border-top: 1px solid #d0d7de;
+		border-top: 1px solid var(--bordure);
 	}
 
 	.heure-notification input {
 		max-width: 100px;
+	}
+
+	button.deconnexion {
+		background: none;
+		border: 1px solid var(--danger-bordure);
+		color: var(--danger-texte);
+		width: 100%;
 	}
 </style>

@@ -130,7 +130,7 @@
 	}
 
 	.retour {
-		color: #1f6feb;
+		color: var(--lien);
 		text-decoration: none;
 		font-weight: 600;
 		white-space: nowrap;
@@ -149,7 +149,7 @@
 		border-radius: 10px;
 		padding: 0.6rem 0.4rem;
 		text-align: center;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 	}
 
 	.recap-nombre {
@@ -161,31 +161,31 @@
 	.recap-libelle {
 		display: block;
 		font-size: 0.72rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 	}
 
 	.recap-consomme {
-		background: #dafbe1;
-		border-color: #1a7f37;
+		background: rgba(26, 127, 55, 0.14);
+		border-color: var(--succes-texte-plein);
 	}
 	.recap-consomme .recap-nombre {
-		color: #1a7f37;
+		color: var(--succes-texte-plein);
 	}
 
 	.recap-perime {
 		background: #ffebe9;
-		border-color: #cf222e;
+		border-color: var(--erreur-texte);
 	}
 	.recap-perime .recap-nombre {
-		color: #cf222e;
+		color: var(--erreur-texte);
 	}
 
 	.recap-autre {
-		background: #f6f8fa;
-		border-color: #57606a;
+		background: var(--surface-attenuee);
+		border-color: var(--texte-attenue);
 	}
 	.recap-autre .recap-nombre {
-		color: #57606a;
+		color: var(--texte-attenue);
 	}
 
 	.filtre {
@@ -197,31 +197,31 @@
 
 	.filtre label {
 		font-size: 0.85rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 	}
 
 	.filtre select {
 		flex: 1;
 		padding: 0.55rem;
 		font-size: 1rem;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--surface);
 	}
 
 	.vide {
-		background: #f6f8fa;
-		border: 1px dashed #d0d7de;
+		background: var(--surface-attenuee);
+		border: 1px dashed var(--bordure);
 		border-radius: 10px;
 		padding: 1.5rem 1rem;
 		text-align: center;
-		color: #57606a;
+		color: var(--texte-attenue);
 	}
 
 	.erreur {
 		background: #ffebe9;
-		border: 1px solid #cf222e;
-		color: #cf222e;
+		border: 1px solid var(--erreur-texte);
+		color: var(--erreur-texte);
 		border-radius: 8px;
 		padding: 0.6rem 0.75rem;
 		font-size: 0.85rem;
@@ -238,11 +238,11 @@
 	}
 
 	.ligne {
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-left: 6px solid var(--couleur);
 		border-radius: 10px;
 		padding: 0.6rem 0.75rem;
-		background: #fff;
+		background: var(--surface);
 	}
 
 	.ligne-principale {
@@ -260,21 +260,21 @@
 		min-height: 36px;
 		padding: 0 0.75rem;
 		font-size: 0.8rem;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 8px;
-		background: #f6f8fa;
-		color: #24292f;
+		background: var(--surface-attenuee);
+		color: var(--texte);
 		cursor: pointer;
 	}
 
 	.motif-CONSOMME {
-		--couleur: #1a7f37;
+		--couleur: var(--succes-texte-plein);
 	}
 	.motif-JETE_PERIME {
-		--couleur: #cf222e;
+		--couleur: var(--erreur-texte);
 	}
 	.motif-JETE_AUTRE {
-		--couleur: #57606a;
+		--couleur: var(--texte-attenue);
 	}
 
 	.pastille {
@@ -305,7 +305,7 @@
 	.meta {
 		margin: 0.15rem 0 0;
 		font-size: 0.8rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 	}
 
 	.motif-libelle {
@@ -320,7 +320,7 @@
 	.total {
 		margin: 0.9rem 0 0;
 		font-size: 0.82rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 		text-align: center;
 	}
 
@@ -333,7 +333,7 @@
 	}
 
 	.pagination a {
-		color: #1f6feb;
+		color: var(--lien);
 		text-decoration: none;
 		font-weight: 600;
 		font-size: 0.9rem;
@@ -341,7 +341,7 @@
 
 	.page-actuelle {
 		font-size: 0.82rem;
-		color: #57606a;
+		color: var(--texte-attenue);
 		margin-left: auto;
 		margin-right: auto;
 	}

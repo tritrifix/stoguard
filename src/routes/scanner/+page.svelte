@@ -212,7 +212,7 @@
 	}
 
 	.retour {
-		color: #1f6feb;
+		color: var(--lien);
 		text-decoration: none;
 		font-weight: 600;
 		white-space: nowrap;
@@ -222,7 +222,7 @@
 		display: block;
 		font-size: 0.85rem;
 		font-weight: 600;
-		color: #24292f;
+		color: var(--texte);
 		margin-bottom: 0.3rem;
 	}
 
@@ -230,9 +230,9 @@
 		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
 		font-size: 16px;
 		padding: 0.5rem;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--bordure);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--surface);
 		width: 100%;
 		box-sizing: border-box;
 		margin-bottom: 0.75rem;
@@ -283,8 +283,8 @@
 		font-size: 1rem;
 		font-weight: 600;
 		border-radius: 8px;
-		border: 1px solid #d0d7de;
-		color: #1f6feb;
+		border: 1px solid var(--bordure);
+		color: var(--lien);
 		text-decoration: none;
 	}
 </style>
