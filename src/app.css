@@ -1,0 +1,307 @@
+/*
+ * Tokens de thème et styles partagés — importé une seule fois par
+ * src/routes/+layout.svelte. Les valeurs viennent de la maquette
+ * « Liquid Glass » (écran 4a), reprises sans réinterprétation.
+ *
+ * Le thème sombre s'applique via data-theme="dark" sur <html>, posé par le
+ * script anti-FOUC de src/app.html puis par $lib/theme.svelte.ts.
+ */
+
+/* Polices auto-hébergées : une police tierce casserait le rendu hors-ligne
+   de la PWA et ajouterait une requête bloquante vers un domaine externe. */
+@font-face {
+	font-family: 'Space Grotesk';
+	font-style: normal;
+	/* Fichier variable unique : une seule déclaration couvre 500 et 700. */
+	font-weight: 500 700;
+	font-display: swap;
+	src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+		U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+		U+FEFF, U+FFFD;
+}
+
+@font-face {
+	font-family: 'Space Grotesk';
+	font-style: normal;
+	font-weight: 500 700;
+	font-display: swap;
+	src: url('/fonts/space-grotesk-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+		U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+		U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+	font-family: 'IBM Plex Mono';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/ibm-plex-mono-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+		U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+		U+FEFF, U+FFFD;
+}
+
+@font-face {
+	font-family: 'IBM Plex Mono';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/ibm-plex-mono-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+		U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+		U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+	--police: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--police-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	--rayon-tuile: 20px;
+	--rayon-champ: 12px;
+	--rayon-pilule: 26px;
+
+	--accent: #c1622d;
+	--accent-degrade: linear-gradient(135deg, #d6733e, #c1622d);
+
+	--fond-page: #fbf3ea;
+	--texte: #2b211b;
+	--texte-attenue: #6e5d4e;
+
+	--blob-1: #ff9e7a;
+	--blob-2: #ffd59a;
+	--blob-3: #e8a0c9;
+	--blob-opacite: 0.5;
+
+	--tuile-fond: rgba(255, 255, 255, 0.55);
+	--tuile-bordure: rgba(255, 255, 255, 0.7);
+	--tuile-ombre: 0 10px 26px rgba(120, 70, 40, 0.12);
+
+	--stat-fond: rgba(255, 255, 255, 0.5);
+	--stat-bordure: rgba(255, 255, 255, 0.65);
+	--stat-articles: #d6733e;
+	--stat-perime: #b4271b;
+	--stat-bientot: #c79a1e;
+
+	--puce-fond: rgba(255, 255, 255, 0.5);
+	--puce-texte: #5c4b3e;
+	--puce-bordure: rgba(255, 255, 255, 0.6);
+
+	--nav-fond: rgba(255, 255, 255, 0.22);
+	--nav-bordure: rgba(255, 255, 255, 0.45);
+	--nav-ombre: 0 14px 28px rgba(120, 70, 40, 0.16);
+	--nav-inactif: #8a7360;
+
+	--secondaire-fond: rgba(255, 255, 255, 0.45);
+	--secondaire-texte: #5c4b3e;
+	--secondaire-bordure: rgba(255, 255, 255, 0.6);
+
+	--vignette-fond: rgba(255, 255, 255, 0.6);
+
+	--champ-fond: rgba(255, 255, 255, 0.55);
+	--champ-bordure: rgba(255, 255, 255, 0.7);
+
+	--sev-danger: #d6501f;
+	--sev-urgent: #e08a2d;
+	--sev-bientot: #c79a1e;
+	--sev-qualite: #7a5fa6;
+	--sev-badge-texte: #fff;
+
+	--ouvert-fond: rgba(252, 233, 220, 0.85);
+	--ouvert-texte: #b14a11;
+
+	/* Plus opaque que la maquette (0.55) : sur le fond crème clair, le vert
+	   translucide délavait le texte blanc jusqu'à l'illisibilité. */
+	--succes-fond: rgba(30, 127, 69, 0.92);
+	--succes-texte: #fff;
+	--succes-bordure: rgba(255, 255, 255, 0.5);
+	--succes-plein: #1e7f45;
+
+	--danger-fond: rgba(214, 72, 59, 0.12);
+	--danger-bordure: #d6483b;
+	--danger-texte: #b4271b;
+
+	--avertissement-fond: rgba(214, 150, 30, 0.12);
+	--avertissement-bordure: rgba(214, 150, 30, 0.35);
+	--avertissement-texte: #8a6a1e;
+
+	--info-fond: rgba(64, 132, 214, 0.12);
+	--info-bordure: rgba(64, 132, 214, 0.35);
+	--info-texte: #2a5fa8;
+
+	/* Tokens de transition : reprennent le rôle des couleurs Primer encore
+	   codées en dur dans les écrans non repris par la refonte, pour qu'ils
+	   suivent le thème au lieu de devenir illisibles en sombre. Ils
+	   disparaîtront à mesure que chaque écran passera au style « verre ». */
+	--surface: #fff;
+	--surface-attenuee: #f6f8fa;
+	--bordure: #d0d7de;
+	--bordure-legere: #eaeef2;
+	--lien: #1f6feb;
+	--succes-texte-plein: #1a7f37;
+	--erreur-texte: #cf222e;
+	/* Fonds pleins de boutons : doivent rester assez foncés pour porter du
+	   texte blanc dans les deux thèmes, contrairement aux tokens de texte
+	   ci-dessus qui s'éclaircissent en sombre. */
+	--action-plein: #1f6feb;
+	--danger-plein: #cf222e;
+}
+
+:root[data-theme='dark'] {
+	--fond-page: #0b0906;
+	--texte: #f5ede4;
+	--texte-attenue: #b8a38e;
+
+	--blob-1: #ff5a36;
+	--blob-2: #ffb13d;
+	--blob-3: #7a2e4a;
+	--blob-opacite: 0.38;
+
+	--tuile-fond: rgba(30, 20, 15, 0.5);
+	--tuile-bordure: rgba(255, 255, 255, 0.1);
+	--tuile-ombre: 0 10px 26px rgba(0, 0, 0, 0.55);
+
+	--stat-fond: rgba(30, 20, 15, 0.5);
+	--stat-bordure: rgba(255, 255, 255, 0.1);
+	--stat-articles: #ff9e6b;
+	--stat-perime: #ff6b3d;
+	--stat-bientot: #ffd65b;
+
+	--puce-fond: rgba(30, 20, 15, 0.5);
+	--puce-texte: #e4d4c4;
+	--puce-bordure: rgba(255, 255, 255, 0.1);
+
+	--nav-fond: rgba(15, 10, 7, 0.25);
+	--nav-bordure: rgba(255, 255, 255, 0.12);
+	--nav-ombre: 0 14px 28px rgba(0, 0, 0, 0.6);
+	--nav-inactif: #b39a82;
+
+	--secondaire-fond: rgba(255, 255, 255, 0.06);
+	--secondaire-texte: #e4d4c4;
+	--secondaire-bordure: rgba(255, 255, 255, 0.1);
+
+	--vignette-fond: rgba(255, 255, 255, 0.08);
+
+	--champ-fond: rgba(255, 255, 255, 0.06);
+	--champ-bordure: rgba(255, 255, 255, 0.12);
+
+	--sev-danger: #ff6b3d;
+	--sev-urgent: #ffa94d;
+	--sev-bientot: #ffd65b;
+	--sev-qualite: #c9a0ff;
+	--sev-badge-texte: #1a0f08;
+
+	--ouvert-fond: rgba(255, 107, 61, 0.22);
+	--ouvert-texte: #ffa47c;
+
+	--succes-fond: rgba(107, 217, 138, 0.26);
+	--succes-texte: #b4f0c4;
+	--succes-bordure: rgba(255, 255, 255, 0.14);
+	--succes-plein: #6bd98a;
+
+	--danger-fond: rgba(255, 107, 61, 0.14);
+	--danger-bordure: rgba(255, 107, 61, 0.5);
+	--danger-texte: #ffa47c;
+
+	--avertissement-fond: rgba(255, 209, 91, 0.12);
+	--avertissement-bordure: rgba(255, 209, 91, 0.3);
+	--avertissement-texte: #ffd65b;
+
+	--info-fond: rgba(120, 170, 255, 0.12);
+	--info-bordure: rgba(120, 170, 255, 0.32);
+	--info-texte: #9dc0ff;
+
+	--surface: rgba(30, 20, 15, 0.62);
+	--surface-attenuee: rgba(255, 255, 255, 0.05);
+	--bordure: rgba(255, 255, 255, 0.14);
+	--bordure-legere: rgba(255, 255, 255, 0.08);
+	--lien: #7aa9ff;
+	--succes-texte-plein: #6bd98a;
+	--erreur-texte: #ff8a7a;
+	--action-plein: #2f6fd0;
+	--danger-plein: #b3301f;
+}
+
+body {
+	margin: 0;
+	font-family: var(--police);
+	background: var(--fond-page);
+	color: var(--texte);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Classes partagées — évitent de redéclarer le même verre dépoli dans
+   chaque bloc <style> scopé. */
+.tuile {
+	background: var(--tuile-fond);
+	backdrop-filter: blur(22px) saturate(180%);
+	-webkit-backdrop-filter: blur(22px) saturate(180%);
+	border: 1px solid var(--tuile-bordure);
+	border-radius: var(--rayon-tuile);
+	box-shadow: var(--tuile-ombre);
+}
+
+.bouton-principal {
+	min-height: 50px;
+	border: none;
+	border-radius: 16px;
+	background: rgba(193, 98, 45, 0.9);
+	color: #fff;
+	font-family: inherit;
+	font-size: 1rem;
+	font-weight: 700;
+	box-shadow: 0 10px 22px rgba(193, 98, 45, 0.35);
+	cursor: pointer;
+}
+
+.bouton-secondaire {
+	border: 1px solid var(--secondaire-bordure);
+	border-radius: var(--rayon-champ);
+	background: var(--secondaire-fond);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	color: var(--secondaire-texte);
+	font-family: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.champ {
+	/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
+	font-size: 16px;
+	font-family: inherit;
+	padding: 0.6rem;
+	border: 1px solid var(--champ-bordure);
+	border-radius: var(--rayon-champ);
+	background: var(--champ-fond);
+	color: var(--texte);
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.banniere {
+	border-radius: 14px;
+	padding: 0.7rem 0.8rem;
+	font-size: 0.85rem;
+	line-height: 1.45;
+	border: 1px solid transparent;
+}
+
+.banniere-avertissement {
+	background: var(--avertissement-fond);
+	border-color: var(--avertissement-bordure);
+	color: var(--avertissement-texte);
+}
+
+.banniere-info {
+	background: var(--info-fond);
+	border-color: var(--info-bordure);
+	color: var(--info-texte);
+}
+
+.banniere-danger {
+	background: var(--danger-fond);
+	border-color: var(--danger-bordure);
+	color: var(--danger-texte);
+}

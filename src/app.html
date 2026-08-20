@@ -4,6 +4,16 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			// Avant tout rendu : sans ça, un chargement en thème sombre flashe
+			// d'abord en clair. Doit rester synchrone et inline.
+			try {
+				var choix = localStorage.getItem('stoguard:theme');
+				if (choix === 'dark' || (!choix && matchMedia('(prefers-color-scheme: dark)').matches)) {
+					document.documentElement.dataset.theme = 'dark';
+				}
+			} catch (e) {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
