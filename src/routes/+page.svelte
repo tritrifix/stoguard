@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { aujourdhui, libelleEtat, versChampDate } from '$lib/dates';
+	import BasculeTheme from '$lib/components/BasculeTheme.svelte';
+	import Vignette from '$lib/components/Vignette.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -7,11 +9,6 @@
 	// Quantité à sortir, saisie par l'utilisateur, uniquement pour les
 	// articles à plus d'une unité (clé = id de l'article). Préremplie à 1.
 	let quantites = $state<Record<string, number>>({});
-
-	// Vignettes dont l'image a échoué à charger (produit retiré d'Open Food
-	// Facts, URL périmée...) : bascule sur le même placeholder neutre que
-	// l'absence d'image plutôt que l'icône d'image cassée du navigateur.
-	let erreursImage = $state<Record<string, boolean>>({});
 
 	// Choix de la date d'ouverture : un seul article à la fois peut avoir son
 	// sélecteur ouvert (id ou null). Le bouton "Ouvrir" ne soumet plus
@@ -21,6 +18,11 @@
 	let modeDate = $state<'aujourdhui' | 'autre'>('aujourdhui');
 	let dateChoisie = $state('');
 	const dateDuJour = versChampDate(aujourdhui());
+
+	const nombrePerimes = $derived(data.lignes.filter((l) => l.etat === 'PERIME').length);
+	const nombreSousSeptJours = $derived(
+		data.lignes.filter((l) => l.jours >= 0 && l.jours <= 7).length
+	);
 
 	function commencerOuverture(id: string) {
 		articleEnOuverture = id;
@@ -40,39 +42,46 @@
 	function formatQuantite(q: number) {
 		return Number.isInteger(q) ? String(q) : q.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 	}
+
+	function lienEmplacement(id: string | null) {
+		return id === null ? '/' : `/?emplacement=${id}`;
+	}
 </script>
 
 <svelte:head><title>Stock — Stoguard</title></svelte:head>
 
 <header>
 	<h1>Mon stock</h1>
-	<div class="actions-entete">
-		<a class="scanner" href="/scanner">Scanner</a>
-		<a class="ajouter" href="/ajouter">+ Ajouter</a>
-		<form method="POST" action="?/deconnexion">
-			<button type="submit" class="deconnexion">Déconnexion</button>
-		</form>
-	</div>
+	<BasculeTheme />
 </header>
 
-<nav class="liens-secondaires">
-	<a href="/historique">Historique</a>
-	<a href="/maintenance">Maintenance</a>
-	<a href="/parametres">Paramètres</a>
-</nav>
+<div class="stats">
+	<div class="stat">
+		<div class="chiffre" style="color: var(--stat-articles)">{data.lignes.length}</div>
+		<div class="libelle">Articles</div>
+	</div>
+	<div class="stat">
+		<div class="chiffre" style="color: var(--stat-perime)">{nombrePerimes}</div>
+		<div class="libelle">Périmé</div>
+	</div>
+	<div class="stat">
+		<div class="chiffre" style="color: var(--stat-bientot)">{nombreSousSeptJours}</div>
+		<div class="libelle">Sous 7 j</div>
+	</div>
+</div>
 
-<form method="GET" class="filtre">
-	<label for="emplacement">Emplacement</label>
-	<select id="emplacement" name="emplacement" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
-		<option value="">Tous</option>
-		{#each data.emplacements as emplacement (emplacement.id)}
-			<option value={emplacement.id} selected={emplacement.id === data.emplacementFiltre}>
-				{emplacement.nom}
-			</option>
-		{/each}
-	</select>
-	<noscript><button type="submit">Filtrer</button></noscript>
-</form>
+<nav class="filtres" aria-label="Filtrer par emplacement">
+	<a href={lienEmplacement(null)} class="puce" class:active={!data.emplacementFiltre}>Tous</a>
+	{#each data.emplacements as emplacement (emplacement.id)}
+		<a
+			href={lienEmplacement(emplacement.id)}
+			class="puce"
+			class:active={emplacement.id === data.emplacementFiltre}
+		>
+			{emplacement.nom}
+		</a>
+	{/each}
+</nav>
 
 {#if data.lignes.length === 0}
 	<p class="vide">
@@ -85,24 +94,13 @@
 {:else}
 	<ul class="stock">
 		{#each data.lignes as ligne (ligne.id)}
-			<li class="carte sev-{ligne.severite}">
+			<li class="carte tuile sev-{ligne.severite}">
 				<div class="ligne-haut">
-					{#if ligne.imageUrl && !erreursImage[ligne.id]}
-						<img
-							class="vignette"
-							src={ligne.imageUrl}
-							alt=""
-							loading="lazy"
-							onerror={() => (erreursImage[ligne.id] = true)}
-						/>
-					{:else}
-						<div class="vignette vignette-vide" aria-hidden="true"></div>
-					{/if}
+					<Vignette src={ligne.imageUrl} />
 					<div class="infos">
 						<div class="entete">
 							<span class="nom">{ligne.nom}</span>
 							{#if ligne.estOuvert}<span class="ouvert">Ouvert</span>{/if}
-							<a class="modifier" href="/article/{ligne.id}/modifier">Modifier</a>
 						</div>
 
 						<p class="meta">
@@ -113,10 +111,22 @@
 
 						<p class="echeance">
 							<span class="badge">{ligne.typeDate}</span>
-							{formatDate.format(ligne.dateEffective)}
+							<span class="date">{formatDate.format(ligne.dateEffective)}</span>
 							<span class="etat">{libelleEtat(ligne.etat, ligne.typeDate, ligne.jours)}</span>
 						</p>
 					</div>
+
+					<a class="modifier" href="/article/{ligne.id}/modifier" aria-label="Modifier {ligne.nom}">
+						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path
+								d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z"
+								stroke="currentColor"
+								stroke-width="1.7"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+					</a>
 				</div>
 
 				{#if ligne.quantite > 1}
@@ -125,7 +135,7 @@
 					</label>
 					<input
 						id={`qte-${ligne.id}`}
-						class="quantite-input"
+						class="champ quantite-input"
 						type="number"
 						step="0.001"
 						min="0.001"
@@ -162,7 +172,7 @@
 							<input
 								type="date"
 								name="dateOuverture"
-								class="date-ouverture-input"
+								class="champ date-ouverture-input"
 								max={dateDuJour}
 								value={dateChoisie}
 								oninput={(e) => (dateChoisie = e.currentTarget.value)}
@@ -171,8 +181,8 @@
 						{/if}
 						{#if form?.erreur}<p class="erreur">{form.erreur}</p>{/if}
 						<div class="choix-ouverture-actions">
-							<button type="submit">Confirmer l'ouverture</button>
-							<button type="button" onclick={() => (articleEnOuverture = null)}>
+							<button type="submit" class="valider">Confirmer l'ouverture</button>
+							<button type="button" class="bouton-secondaire" onclick={() => (articleEnOuverture = null)}>
 								Annuler
 							</button>
 						</div>
@@ -182,32 +192,32 @@
 				<div class="actions">
 					{#if !ligne.estOuvert}
 						{#if articleEnOuverture !== ligne.id}
-							<button type="button" onclick={() => commencerOuverture(ligne.id)}>
+							<button type="button" class="bouton-secondaire" onclick={() => commencerOuverture(ligne.id)}>
 								Ouvrir
 							</button>
 						{/if}
 					{:else}
 						<form method="POST" action="?/annulerOuverture">
 							<input type="hidden" name="id" value={ligne.id} />
-							<button type="submit">Annuler l'ouverture (erreur)</button>
+							<button type="submit" class="bouton-secondaire">Annuler l'ouverture</button>
 						</form>
 					{/if}
 					<form method="POST" action="?/consommer">
 						<input type="hidden" name="id" value={ligne.id} />
 						<input type="hidden" name="quantite" value={quantites[ligne.id] ?? 1} />
-						<button type="submit" class="primaire">Consommé</button>
+						<button type="submit" class="succes">Consommé</button>
 					</form>
 					<form method="POST" action="?/jeter">
 						<input type="hidden" name="id" value={ligne.id} />
 						<input type="hidden" name="quantite" value={quantites[ligne.id] ?? 1} />
 						<input type="hidden" name="motif" value="JETE_PERIME" />
-						<button type="submit" class="danger">Jeté (périmé)</button>
+						<button type="submit" class="bouton-secondaire danger">Jeté (périmé)</button>
 					</form>
 					<form method="POST" action="?/jeter">
 						<input type="hidden" name="id" value={ligne.id} />
 						<input type="hidden" name="quantite" value={quantites[ligne.id] ?? 1} />
 						<input type="hidden" name="motif" value="JETE_AUTRE" />
-						<button type="submit" class="danger">Jeté (autre)</button>
+						<button type="submit" class="bouton-secondaire danger">Jeté (autre)</button>
 					</form>
 				</div>
 			</li>
@@ -220,95 +230,86 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		flex-wrap: wrap;
 		gap: 0.75rem;
-		margin-bottom: 1rem;
+		margin-bottom: 0.85rem;
 	}
 
 	h1 {
-		font-size: 1.4rem;
+		font-size: 27px;
+		font-weight: 700;
+		letter-spacing: -0.3px;
 		margin: 0;
 	}
 
-	.actions-entete {
+	.stats {
 		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 8px;
+		margin-bottom: 0.9rem;
 	}
 
-	.scanner {
-		background: none;
-		border: 1px solid #1f6feb;
-		color: #1f6feb;
-		text-decoration: none;
-		padding: 0.6rem 0.9rem;
-		border-radius: 8px;
-		font-weight: 600;
-		white-space: nowrap;
-	}
-
-	.ajouter {
-		background: #1f6feb;
-		color: #fff;
-		text-decoration: none;
-		padding: 0.6rem 0.9rem;
-		border-radius: 8px;
-		font-weight: 600;
-		white-space: nowrap;
-	}
-
-	.deconnexion {
-		background: none;
-		border: 1px solid #d0d7de;
-		color: #57606a;
-		padding: 0.6rem 0.75rem;
-		border-radius: 8px;
-		font-size: 0.85rem;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-
-	.liens-secondaires {
-		display: flex;
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.liens-secondaires a {
-		color: #57606a;
-		font-size: 0.85rem;
-		text-decoration: underline;
-	}
-
-	.filtre {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
-	}
-
-	.filtre label {
-		font-size: 0.85rem;
-		color: #57606a;
-	}
-
-	.filtre select {
+	.stat {
 		flex: 1;
-		padding: 0.55rem;
-		font-size: 1rem;
-		border: 1px solid #d0d7de;
-		border-radius: 8px;
-		background: #fff;
+		min-width: 0;
+		background: var(--stat-fond);
+		backdrop-filter: blur(18px) saturate(180%);
+		-webkit-backdrop-filter: blur(18px) saturate(180%);
+		border: 1px solid var(--stat-bordure);
+		border-radius: 14px;
+		padding: 8px 10px;
+	}
+
+	.chiffre {
+		font-size: 17px;
+		font-weight: 700;
+	}
+
+	.libelle {
+		font-size: 11px;
+		color: var(--texte-attenue);
+	}
+
+	.filtres {
+		display: flex;
+		gap: 8px;
+		margin-bottom: 0.9rem;
+		overflow-x: auto;
+		/* Les puces gardent leur largeur naturelle et défilent horizontalement
+		   plutôt que de se comprimer sur un écran étroit. */
+		scrollbar-width: none;
+	}
+
+	.filtres::-webkit-scrollbar {
+		display: none;
+	}
+
+	.puce {
+		background: var(--puce-fond);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+		color: var(--puce-texte);
+		font-size: 13px;
+		font-weight: 600;
+		padding: 7px 14px;
+		border-radius: 999px;
+		white-space: nowrap;
+		border: 1px solid var(--puce-bordure);
+		text-decoration: none;
+		flex-shrink: 0;
+	}
+
+	.puce.active {
+		background: rgba(193, 98, 45, 0.75);
+		color: #fff;
+		border-color: rgba(255, 255, 255, 0.3);
 	}
 
 	.vide {
-		background: #f6f8fa;
-		border: 1px dashed #d0d7de;
-		border-radius: 10px;
+		background: var(--tuile-fond);
+		border: 1px dashed var(--tuile-bordure);
+		border-radius: var(--rayon-tuile);
 		padding: 1.5rem 1rem;
 		text-align: center;
-		color: #57606a;
+		color: var(--texte-attenue);
 	}
 
 	.stock {
@@ -317,57 +318,39 @@
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 10px;
 	}
 
 	.carte {
-		border: 1px solid #d0d7de;
+		padding: 14px;
 		/* Le liseré gauche porte l'état : lisible d'un coup d'œil au pouce. */
-		border-left: 6px solid var(--couleur);
-		border-radius: 10px;
-		padding: 0.75rem;
-		background: #fff;
+		border-left: 4px solid var(--couleur);
 	}
 
 	.sev-danger {
-		--couleur: #cf222e;
+		--couleur: var(--sev-danger);
 	}
 	.sev-qualite {
-		--couleur: #8250df;
+		--couleur: var(--sev-qualite);
 	}
 	.sev-urgent {
-		--couleur: #d1242f;
+		--couleur: var(--sev-urgent);
 	}
 	.sev-bientot {
-		--couleur: #bf8700;
+		--couleur: var(--sev-bientot);
 	}
 	.sev-ok {
-		--couleur: #1a7f37;
+		--couleur: var(--succes-plein);
 	}
 
 	.ligne-haut {
 		display: flex;
-		align-items: flex-start;
-		gap: 0.6rem;
-	}
-
-	.vignette {
-		width: 44px;
-		height: 44px;
-		flex-shrink: 0;
-		border-radius: 6px;
-		object-fit: contain;
-		background: #f6f8fa;
-		border: 1px solid #eaeef2;
-	}
-
-	.vignette-vide {
-		background: #eaeef2;
+		gap: 10px;
 	}
 
 	.infos {
 		/* Sans ça, le texte ne rétrécit pas sous sa largeur naturelle et pousse
-		   la vignette hors de la carte au lieu de tronquer/passer à la ligne. */
+		   la vignette hors de la carte au lieu de passer à la ligne. */
 		min-width: 0;
 		flex: 1;
 	}
@@ -375,73 +358,91 @@
 	.entete {
 		display: flex;
 		align-items: baseline;
-		gap: 0.5rem;
+		gap: 6px;
 		flex-wrap: wrap;
-	}
-
-	.modifier {
-		margin-left: auto;
-		font-size: 0.8rem;
-		color: #57606a;
-		text-decoration: underline;
 	}
 
 	.nom {
-		font-weight: 600;
-		font-size: 1.05rem;
+		font-weight: 700;
+		font-size: 15px;
 	}
 
 	.ouvert {
-		background: #fff1e5;
-		color: #bc4c00;
-		border: 1px solid #f5c396;
-		border-radius: 999px;
-		padding: 0.1rem 0.5rem;
-		font-size: 0.72rem;
+		background: var(--ouvert-fond);
+		color: var(--ouvert-texte);
+		font-size: 10px;
 		font-weight: 700;
+		padding: 2px 7px;
+		border-radius: 999px;
 		text-transform: uppercase;
 	}
 
+	/* Hors du bloc de texte : dans l'en-tête, un nom long le renvoyait à la
+	   ligne suivante et creusait un trou dans la carte. */
+	.modifier {
+		color: var(--texte-attenue);
+		display: flex;
+		align-items: flex-start;
+		justify-content: flex-end;
+		flex-shrink: 0;
+		/* Cible tactile confortable pour une icône de 15px. */
+		min-width: 40px;
+		min-height: 40px;
+		margin: -6px -6px 0 0;
+		padding-top: 6px;
+	}
+
 	.meta {
-		margin: 0.25rem 0 0.5rem;
-		font-size: 0.85rem;
-		color: #57606a;
+		margin: 2px 0 0;
+		font-size: 12px;
+		color: var(--texte-attenue);
 	}
 
 	.echeance {
-		margin: 0 0 0.75rem;
-		font-size: 0.9rem;
+		margin: 6px 0 0;
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
+		gap: 6px;
 		flex-wrap: wrap;
+		font-size: 12px;
+	}
+
+	.badge {
+		background: var(--couleur);
+		color: var(--sev-badge-texte);
+		font-size: 10px;
+		font-weight: 700;
+		padding: 2px 6px;
+		border-radius: 5px;
+	}
+
+	.date {
+		font-family: var(--police-mono);
+		color: var(--texte-attenue);
+	}
+
+	.etat {
+		color: var(--couleur);
+		font-weight: 700;
 	}
 
 	.quantite-label {
 		display: block;
-		font-size: 0.78rem;
-		color: #57606a;
-		margin: 0 0 0.25rem;
+		font-size: 11px;
+		color: var(--texte-attenue);
+		margin: 10px 0 0.25rem;
 	}
 
 	.quantite-input {
-		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
-		font-size: 16px;
-		padding: 0.5rem;
-		border: 1px solid #d0d7de;
-		border-radius: 8px;
-		background: #fff;
-		width: 100%;
-		box-sizing: border-box;
-		margin-bottom: 0.6rem;
+		margin-bottom: 0.2rem;
 	}
 
 	.choix-ouverture {
-		background: #f6f8fa;
-		border: 1px solid #d0d7de;
-		border-radius: 8px;
+		background: var(--secondaire-fond);
+		border: 1px solid var(--secondaire-bordure);
+		border-radius: 14px;
 		padding: 0.6rem 0.75rem;
-		margin-bottom: 0.6rem;
+		margin-top: 10px;
 	}
 
 	.mode-date {
@@ -454,7 +455,7 @@
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
-		font-size: 0.88rem;
+		font-size: 13px;
 	}
 
 	.radio-inline input {
@@ -462,17 +463,10 @@
 		height: 1.1rem;
 		margin: 0;
 		flex-shrink: 0;
+		accent-color: var(--accent);
 	}
 
 	.date-ouverture-input {
-		/* 16px minimum : en dessous, Safari/Chrome Android zooment au focus. */
-		font-size: 16px;
-		padding: 0.5rem;
-		border: 1px solid #d0d7de;
-		border-radius: 8px;
-		background: #fff;
-		width: 100%;
-		box-sizing: border-box;
 		margin-top: 0.5rem;
 	}
 
@@ -483,69 +477,66 @@
 	}
 
 	.choix-ouverture-actions button {
+		flex: 1;
 		min-height: 40px;
-		padding: 0 0.75rem;
-		font-size: 0.85rem;
-		border: 1px solid #d0d7de;
-		border-radius: 8px;
-		background: #fff;
-		color: #24292f;
+		padding: 0 0.6rem;
+		font-size: 12px;
+	}
+
+	.valider {
+		border: 1px solid rgba(255, 255, 255, 0.4);
+		border-radius: var(--rayon-champ);
+		background: rgba(193, 98, 45, 0.9);
+		color: #fff;
+		font-family: inherit;
+		font-weight: 600;
 		cursor: pointer;
 	}
 
-	.choix-ouverture-actions button[type='submit'] {
-		background: #1f6feb;
-		border-color: #1f6feb;
-		color: #fff;
-		font-weight: 600;
-	}
-
 	.erreur {
-		color: #cf222e;
+		color: var(--danger-texte);
 		font-size: 0.82rem;
 		margin: 0.5rem 0 0;
-	}
-
-	.badge {
-		background: var(--couleur);
-		color: #fff;
-		border-radius: 4px;
-		padding: 0.1rem 0.35rem;
-		font-size: 0.72rem;
-		font-weight: 700;
-	}
-
-	.etat {
-		color: var(--couleur);
-		font-weight: 600;
 	}
 
 	.actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.4rem;
+		gap: 6px;
+		margin-top: 10px;
+	}
+
+	/* Les formulaires ne doivent pas former de boîte : sans ça, chaque bouton
+	   serait enfermé dans son propre conteneur et la rangée ne pourrait plus
+	   les répartir. */
+	.actions form {
+		display: contents;
 	}
 
 	.actions button {
-		/* 44px de haut : cible tactile confortable sur téléphone. */
-		min-height: 44px;
-		padding: 0 0.75rem;
-		font-size: 0.85rem;
-		border: 1px solid #d0d7de;
-		border-radius: 8px;
-		background: #f6f8fa;
-		color: #24292f;
+		/* Deux boutons par rangée : les actions principales d'abord, les deux
+		   motifs de jet ensuite. À 320px, quatre boutons sur une seule rangée
+		   deviennent illisibles. */
+		flex: 1 1 calc(50% - 3px);
+		min-height: 40px;
+		padding: 0 0.5rem;
+		font-size: 12px;
+		border-radius: 11px;
+	}
+
+	.succes {
+		border: 1px solid var(--succes-bordure);
+		border-radius: 11px;
+		background: var(--succes-fond);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+		color: var(--succes-texte);
+		font-family: inherit;
+		font-weight: 600;
 		cursor: pointer;
 	}
 
-	.actions button.primaire {
-		background: #1a7f37;
-		border-color: #1a7f37;
-		color: #fff;
-		font-weight: 600;
-	}
-
-	.actions button.danger {
-		color: #cf222e;
+	.danger {
+		color: var(--danger-texte);
 	}
 </style>
